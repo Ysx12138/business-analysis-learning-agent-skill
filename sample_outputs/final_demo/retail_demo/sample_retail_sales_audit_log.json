@@ -1,0 +1,306 @@
+{
+  "schema_version": "0.1.0",
+  "result_schema_version": "0.2.0",
+  "input_file": "/Users/sx/Desktop/AI-Data-Analysis-Learning-Skill/github/business-analysis-learning-agent-skill/test_cases/sample_retail_sales.csv",
+  "run_timestamp": "2026-06-02T01:16:00.237614",
+  "analysis_mode": "audit_report",
+  "dataset_profile": {
+    "rows": 12,
+    "columns": 6,
+    "field_names": [
+      "order_date",
+      "region",
+      "category",
+      "revenue",
+      "cost",
+      "quantity"
+    ],
+    "field_types": {
+      "order_date": "object",
+      "region": "object",
+      "category": "object",
+      "revenue": "float64",
+      "cost": "float64",
+      "quantity": "int64"
+    },
+    "missing_values": {},
+    "duplicate_rows": 0,
+    "time_range": ""
+  },
+  "field_semantics": [
+    {
+      "field": "order_date",
+      "inferred_meaning": "Date field",
+      "confidence": "high",
+      "matched_rule": "Matched pattern: (?i).*date.*"
+    },
+    {
+      "field": "region",
+      "inferred_meaning": "Geographic region",
+      "confidence": "high",
+      "matched_rule": "Matched pattern: (?i)^(country|region|market|area)$"
+    },
+    {
+      "field": "category",
+      "inferred_meaning": "Category / department",
+      "confidence": "high",
+      "matched_rule": "Matched pattern: (?i)^(category|categories|product_category|department|dept)$"
+    },
+    {
+      "field": "revenue",
+      "inferred_meaning": "Revenue / total sales",
+      "confidence": "high",
+      "matched_rule": "Matched pattern: (?i)^(revenue|sales|total_revenue|gross_revenue|net_revenue)$"
+    },
+    {
+      "field": "cost",
+      "inferred_meaning": "Marketing spend / cost",
+      "confidence": "high",
+      "matched_rule": "Matched pattern: (?i)^(spent|spend|ad_spend|cost|cpc|cpm|total_spent)$"
+    },
+    {
+      "field": "quantity",
+      "inferred_meaning": "Transaction quantity",
+      "confidence": "high",
+      "matched_rule": "Matched pattern: (?i)^(quantity|qty)$"
+    }
+  ],
+  "matched_metrics": [
+    {
+      "metric_name": "Total Revenue",
+      "formula": "SUM(revenue) = 126,000.00",
+      "used_fields": [],
+      "current_value": 126000.0
+    }
+  ],
+  "skipped_metrics": [
+    {
+      "metric_name": "Total Spent",
+      "required_fields": [
+        "spend",
+        "Cost",
+        "spent",
+        "cost",
+        "Spent"
+      ],
+      "missing_fields": [
+        "spend",
+        "Cost",
+        "spent",
+        "cost",
+        "Spent"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Impressions",
+      "required_fields": [
+        "impressions",
+        "Impressions"
+      ],
+      "missing_fields": [
+        "impressions",
+        "Impressions"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Clicks",
+      "required_fields": [
+        "clicks",
+        "Clicks"
+      ],
+      "missing_fields": [
+        "clicks",
+        "Clicks"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Net Income",
+      "required_fields": [
+        "net_income",
+        "Profit",
+        "profit",
+        "Net_Income"
+      ],
+      "missing_fields": [
+        "net_income",
+        "Profit",
+        "profit",
+        "Net_Income"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Assets",
+      "required_fields": [
+        "total_assets",
+        "Total_Assets"
+      ],
+      "missing_fields": [
+        "total_assets",
+        "Total_Assets"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Avg Rating",
+      "required_fields": [
+        "rating",
+        "Rating",
+        "reviews.rating",
+        "score"
+      ],
+      "missing_fields": [
+        "rating",
+        "Rating",
+        "reviews.rating",
+        "score"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Churn Rate",
+      "required_fields": [
+        "Churn",
+        "is_churn",
+        "churn_flag",
+        "churn"
+      ],
+      "missing_fields": [
+        "Churn",
+        "is_churn",
+        "churn_flag",
+        "churn"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "MRR",
+      "required_fields": [
+        "monthly_charges",
+        "MonthlyCharges",
+        "mrr_amount",
+        "mrr"
+      ],
+      "missing_fields": [
+        "monthly_charges",
+        "MonthlyCharges",
+        "mrr_amount",
+        "mrr"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "ARR",
+      "required_fields": [
+        "arr_amount",
+        "arr"
+      ],
+      "missing_fields": [
+        "arr_amount",
+        "arr"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Charges",
+      "required_fields": [
+        "total_charges",
+        "TotalCharges"
+      ],
+      "missing_fields": [
+        "total_charges",
+        "TotalCharges"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Support Tickets",
+      "required_fields": [
+        "case_id",
+        "support_ticket_id",
+        "ticket",
+        "ticket_id"
+      ],
+      "missing_fields": [
+        "case_id",
+        "support_ticket_id",
+        "ticket",
+        "ticket_id"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Avg Satisfaction",
+      "required_fields": [
+        "satisfaction_score",
+        "satisfaction",
+        "NPS",
+        "nps",
+        "csat"
+      ],
+      "missing_fields": [
+        "satisfaction_score",
+        "satisfaction",
+        "NPS",
+        "nps",
+        "csat"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Conversions",
+      "required_fields": [
+        "Conversions",
+        "conversions",
+        "Total_Conversion",
+        "approved_conversion"
+      ],
+      "missing_fields": [
+        "Conversions",
+        "conversions",
+        "Total_Conversion",
+        "approved_conversion"
+      ],
+      "reason": "No matching field found in dataset"
+    }
+  ],
+  "executed_methods": [
+    {
+      "method_name": "grouped_ranking_analysis",
+      "trigger_condition": "Categorical field(s) exist: region, category",
+      "used_fields": [
+        "region",
+        "category"
+      ],
+      "output": "6 ranking table(s) generated"
+    },
+    {
+      "method_name": "distribution_analysis",
+      "trigger_condition": "Numeric field(s) exist",
+      "used_fields": [],
+      "output": "2 distribution table(s) generated"
+    }
+  ],
+  "skipped_methods": [],
+  "data_quality_risks": [],
+  "output_files": [
+    {
+      "type": "excel",
+      "path": "/tmp/balearn_verify_fix/sample_retail_sales_analysis.xlsx",
+      "status": "skipped"
+    },
+    {
+      "type": "pdf",
+      "path": "/tmp/balearn_verify_fix/sample_retail_sales_report.pdf",
+      "status": "generated"
+    },
+    {
+      "type": "ppt",
+      "path": "/tmp/balearn_verify_fix/sample_retail_sales_presentation.pptx",
+      "status": "skipped"
+    }
+  ]
+}

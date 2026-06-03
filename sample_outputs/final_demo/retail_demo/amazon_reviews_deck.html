@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amazon 产品评论分析 · Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@300;400;500;600&family=Noto+Serif+SC:wght@300;400;500;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0a0a0b;
+    --ink-rgb:10,10,11;
+    --paper:#f1efea;
+    --paper-rgb:241,239,234;
+    --paper-tint:#e8e5de;
+    --ink-tint:#18181a;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+    --serif-en:"Playfair Display","Source Serif 4",Georgia,serif;
+    --serif-body-en:"Source Serif 4",Georgia,serif;
+    --serif-zh:"Noto Serif SC",source-han-serif-sc,serif;
+    --sans-zh:"Noto Sans SC",source-han-sans-sc,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);color:var(--paper);font-family:var(--sans-zh);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  canvas.bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;display:block;transition:opacity 1.2s ease}
+  canvas#bg-light{opacity:0}
+  canvas#bg-dark{opacity:1}
+  body.light-bg canvas#bg-light{opacity:1}
+  body.light-bg canvas#bg-dark{opacity:0}
+  body.low-power canvas.bg{display:none!important}
+  #deck{position:fixed;inset:0;width:10000vw;height:100vh;display:flex;flex-wrap:nowrap;transition:transform .9s cubic-bezier(.77,0,.175,1);z-index:10;will-change:transform}
+  .slide{width:100vw;height:100vh;flex:0 0 100vw;position:relative;padding:6vh 6vw 10vh 6vw;display:flex;flex-direction:column;overflow:hidden}
+  .slide.light{color:var(--ink);background:var(--paper)}
+  .slide.dark{color:var(--paper);background:var(--ink)}
+  .slide::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;transition:background .7s ease}
+  .slide.light::before{background:rgba(var(--paper-rgb),.78);backdrop-filter:blur(3px)}
+  .slide.dark::before{background:rgba(var(--ink-rgb),.78);backdrop-filter:blur(3px)}
+  .slide.hero.light::before{background:rgba(var(--paper-rgb),.16);backdrop-filter:none}
+  .slide.hero.dark::before{background:rgba(var(--ink-rgb),.12);backdrop-filter:none}
+  .slide.hero::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none}
+  .slide.hero.light::after{background:linear-gradient(180deg,rgba(var(--paper-rgb),.28) 0%,rgba(var(--paper-rgb),0) 14%,rgba(var(--paper-rgb),0) 86%,rgba(var(--paper-rgb),.28) 100%)}
+  .slide.hero.dark::after{background:linear-gradient(180deg,rgba(var(--ink-rgb),.32) 0%,rgba(var(--ink-rgb),0) 14%,rgba(var(--ink-rgb),0) 86%,rgba(var(--ink-rgb),.32) 100%)}
+  .chrome{display:flex;justify-content:space-between;align-items:flex-start;font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
+  .chrome .left,.chrome .right{display:flex;gap:2.4em;align-items:center}
+  .chrome .sep{width:40px;height:1px;background:currentColor;opacity:.4}
+  .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.55}
+  .foot .title{font-family:var(--serif-zh);font-weight:400;letter-spacing:.05em;text-transform:none;opacity:.75;font-size:13px}
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;padding:6px 14px;border:1px solid currentColor;opacity:.85}
+  .rule{width:100%;height:1px;background:currentColor;opacity:.25;margin:3vh 0}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.3em;text-transform:uppercase;opacity:.6;margin-bottom:2.6vh}
+  .display{font-family:var(--serif-en);font-weight:700;font-size:11vw;line-height:.92;letter-spacing:-.025em}
+  .display-zh{font-family:var(--serif-zh);font-weight:700;font-size:7.8vw;line-height:1.04;letter-spacing:-.005em}
+  .h1-zh{font-family:var(--serif-zh);font-weight:700;font-size:4.6vw;line-height:1.12;letter-spacing:-.005em}
+  .h2-zh{font-family:var(--serif-zh);font-weight:600;font-size:3.2vw;line-height:1.2;letter-spacing:0}
+  .h3-zh{font-family:var(--serif-zh);font-weight:500;font-size:1.9vw;line-height:1.35}
+  .body-zh{font-family:var(--sans-zh);font-weight:400;font-size:max(15px,1.22vw);line-height:1.75;opacity:.82;letter-spacing:.01em}
+  .body-serif{font-family:var(--serif-zh);font-weight:400;font-size:max(15px,1.3vw);line-height:1.65;opacity:.88}
+  .lead{font-family:var(--serif-zh);font-weight:400;font-size:1.9vw;line-height:1.4;opacity:.85}
+  .meta{font-family:var(--mono);font-size:max(11px,.88vw);letter-spacing:.16em;text-transform:uppercase;opacity:.6}
+  .big-num{font-family:var(--serif-en);font-weight:800;font-size:10vw;line-height:.85;letter-spacing:-.03em;font-feature-settings:"tnum"}
+  .mid-num{font-family:var(--serif-en);font-weight:700;font-size:5.5vw;line-height:.88;letter-spacing:-.02em;font-feature-settings:"tnum"}
+  em{font-style:italic;font-family:var(--serif-en)}
+  .en{font-family:var(--serif-en);font-style:italic;font-weight:500}
+  .col{display:flex;flex-direction:column;gap:2.4vh}
+  .row{display:flex;align-items:center;gap:3vw}
+  .grid-6{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:4vw 6vw;flex:1;align-content:center;padding:2vh 0}
+  .grid-4{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:4vh 6vw;flex:1;align-content:center}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:4vw;flex:1;align-content:center}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:4vw;flex:1;align-items:center}
+  .split-55{display:grid;grid-template-columns:55fr 45fr;gap:5vw;flex:1;align-items:stretch}
+  .fill{flex:1}
+  .center{align-items:center;justify-content:center;text-align:center}
+  .bottom-left{position:absolute;left:6vw;bottom:9vh;max-width:50vw}
+  .bottom-right{position:absolute;right:6vw;bottom:9vh;max-width:50vw;text-align:right}
+  .stat{display:flex;flex-direction:column;gap:1vh;align-items:flex-start}
+  .stat .n{font-family:var(--serif-en);font-weight:800;font-size:8vw;line-height:.88;letter-spacing:-.03em;font-feature-settings:"tnum"}
+  .stat .l{font-family:var(--sans-zh);font-size:max(13px,1.05vw);opacity:.7;margin-top:1vh;font-weight:400;line-height:1.5}
+  .stat .m{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.5;margin-bottom:.2vh}
+  .callout{padding:3vh 2.4vw;border-left:3px solid currentColor;position:relative;font-family:var(--serif-zh);font-size:max(15px,1.2vw);line-height:1.55;opacity:.92}
+  .slide.light .callout{background:rgba(var(--ink-rgb),.05)}
+  .slide.dark .callout{background:rgba(var(--paper-rgb),.06)}
+  .callout .cite{display:block;margin-top:1.6vh;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.6}
+  .hi{position:relative;display:inline}
+  .slide.dark .hi::after{content:"";position:absolute;left:-.1em;right:-.1em;bottom:-.05em;height:.28em;background:rgba(var(--paper-rgb),.15);z-index:-1}
+  .slide.light .hi::after{content:"";position:absolute;left:-.1em;right:-.1em;bottom:-.05em;height:.28em;background:rgba(var(--ink-rgb),.08);z-index:-1}
+  .ico{width:1em;height:1em;display:inline-block;vertical-align:-.12em;stroke:currentColor;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+  .ico-lg,.ico-md,.ico-sm{fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round}
+  .ico-lg{width:2.6vw;height:2.6vw;stroke-width:1.2;display:inline-block}
+  .ico-md{width:1.8vw;height:1.8vw;stroke-width:1.3;display:inline-block;vertical-align:-.4em}
+  .ico-sm{width:1.1vw;height:1.1vw;stroke-width:1.4;display:inline-block;vertical-align:-.15em;opacity:.7}
+  .frame-img{overflow:hidden;position:relative;background:rgba(0,0,0,.04);box-sizing:border-box;width:100%;border-radius:4px}
+  .slide.dark .frame-img{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12)}
+  .frame-img > img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
+  .h-hero{font-family:var(--serif-zh);font-weight:900;font-size:10vw;line-height:.96;letter-spacing:-.02em}
+  .h-xl{font-family:var(--serif-zh);font-weight:700;font-size:6.2vw;line-height:1.08;letter-spacing:-.01em}
+  .h-sub{font-family:var(--serif-zh);font-weight:500;font-size:3.1vw;line-height:1.25;letter-spacing:0;opacity:.7}
+  .h-md{font-family:var(--serif-zh);font-weight:600;font-size:2.3vw;line-height:1.3}
+  .stat-card{display:flex;flex-direction:column;gap:.8vh;align-items:flex-start;padding-top:1.6vh;border-top:1px solid currentColor;border-color:rgba(127,127,127,.3)}
+  .stat-card .stat-label{font-family:var(--mono);font-size:max(10px,.78vw);letter-spacing:.24em;text-transform:uppercase;opacity:.55}
+  .stat-card .stat-nb{font-family:var(--serif-en);font-weight:800;font-size:5.8vw;line-height:.9;letter-spacing:-.03em;font-feature-settings:"tnum";margin-top:.4vh}
+  .stat-card .stat-nb .stat-unit{font-family:var(--serif-zh);font-weight:500;font-size:.38em;letter-spacing:0;opacity:.72;margin-left:.14em}
+  .stat-card .stat-note{font-family:var(--sans-zh);font-weight:400;font-size:max(13px,1.05vw);line-height:1.5;opacity:.72;margin-top:.6vh}
+  .grid-4 .stat-card .stat-nb{font-size:5vw}
+  .grid-3 .stat-card .stat-nb{font-size:6.8vw}
+  .rowline{display:grid;grid-template-columns:1fr 2fr 1fr;gap:2vw;padding:2.2vh 0;border-top:1px solid currentColor;align-items:center;border-color:rgba(127,127,127,.25)}
+  .rowline:last-child{border-bottom:1px solid currentColor;border-color:rgba(127,127,127,.25)}
+  .rowline .k{font-family:var(--serif-zh);font-weight:700;font-size:1.7vw}
+  .rowline .v{font-family:var(--sans-zh);font-weight:400;font-size:max(14px,1.2vw);opacity:.85;line-height:1.55}
+  .rowline .m{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.6;justify-self:end}
+  .pillar{display:flex;flex-direction:column;gap:1.8vh}
+  .pillar .ic{font-family:var(--serif-en);font-style:italic;font-size:2.6vw;opacity:.45;font-weight:400}
+  .pillar .t{font-family:var(--serif-zh);font-weight:700;font-size:2.4vw;line-height:1.1}
+  .pillar .d{font-family:var(--sans-zh);font-weight:400;font-size:max(14px,1.1vw);opacity:.76;line-height:1.6}
+  .sign{font-family:var(--serif-en);font-style:italic;font-weight:500;font-size:2vw;opacity:.7}
+  .frame{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .frame.grid-2-7-5,.frame.grid-2-6-6,.frame.grid-2-8-4,.frame.grid-3-3,.frame.grid-6{display:grid}
+  .grid-2-7-5{display:grid;grid-template-columns:7fr 5fr;gap:3vw 4vh;align-items:start}
+  .grid-2-6-6{display:grid;grid-template-columns:1fr 1fr;gap:3vw 4vh;align-items:start}
+  figure.frame-img{margin:0;display:flex;flex-direction:column;min-width:0}
+  .img-cap{display:block;margin-top:.8vh;font-family:var(--mono);font-size:max(10px,.8vw);letter-spacing:.22em;text-transform:uppercase;opacity:.6}
+  .callout-src{display:block;margin-top:1.6vh;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.6}
+  [data-anim]{opacity:1}
+  body.motion-ready [data-anim]{opacity:0}
+  body.motion-ready [data-anim="left"]{transform:translateX(-24px)}
+  body.motion-ready [data-anim="right"]{transform:translateX(24px)}
+  body.motion-ready [data-anim="line"]{opacity:0;transform:translateY(10px)}
+  body.motion-ready [data-animate="pipeline"] [data-anim]{opacity:.15}
+  body.low-power #deck{transition:none!important}
+  body.low-power *,
+  body.low-power *::before,
+  body.low-power *::after{animation:none!important;transition:none!important}
+  body.low-power.motion-ready [data-anim],
+  body.low-power [data-anim]{opacity:1!important;transform:none!important}
+  @media (max-width:900px){
+    .display{font-size:16vw}
+    .display-zh{font-size:12vw}
+    .h1-zh{font-size:7vw}
+    .h-hero{font-size:14vw}
+    .h-xl{font-size:9vw}
+    .grid-2-7-5,.grid-2-6-6,.grid-2-8-4{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<script>
+  (function(){
+    const KEY='guizang-ppt-low-power';
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const stored=localStorage.getItem(KEY);
+    window.__lowPowerMode=stored==='1'||(stored===null&&reduced);
+    function updateHint(){
+      const hint=document.getElementById('hint');
+      if(hint) hint.textContent=`← → 翻页 · B ${window.__lowPowerMode?'动态':'静态'} · ESC 索引`;
+    }
+    window.__setLowPowerMode=function(on,opts={}){
+      window.__lowPowerMode=!!on;
+      document.body.classList.toggle('low-power',window.__lowPowerMode);
+      if(opts.persist!==false) localStorage.setItem(KEY,window.__lowPowerMode?'1':'0');
+      if(window.__lowPowerMode&&document.getAnimations){document.getAnimations().forEach(a=>a.cancel());}
+      updateHint();
+      dispatchEvent(new CustomEvent('ppt-low-power-change',{detail:{on:window.__lowPowerMode}}));
+      if(window.__playSlide) window.__playSlide(window.__currentSlideIndex||0);
+    };
+    document.body.classList.toggle('low-power',window.__lowPowerMode);
+    addEventListener('DOMContentLoaded',updateHint,{once:true});
+  })();
+</script>
+<canvas id="bg-dark" class="bg"></canvas>
+<canvas id="bg-light" class="bg"></canvas>
+<div id="hint">← → 翻页 · B 静态 · ESC 索引</div>
+<div id="deck">
+
+<!-- ========== 1. COVER ========== -->
+<section class="slide hero dark">
+  <div class="chrome">
+    <div class="left">Business Analysis · Amazon Reviews</div>
+    <div class="right">Act I · 01 / 09</div>
+  </div>
+  <div class="fill center col" style="gap:3vh">
+    <div class="kicker" data-anim>数据不是答案，是提问的方式</div>
+    <h1 class="display-zh" data-anim style="font-size:7.8vw;white-space:normal">Amazon 产品<br>评论分析</h1>
+    <p class="lead" data-anim style="max-width:50vw">5,000 条消费者评论揭示了什么？<br>从评分、品类到用户行为，一份完整的数据解读</p>
+    <div class="meta-row" data-anim style="margin-top:4vh">
+      <span>Datafiniti · Amazon Consumer Reviews</span>
+      <span>2015 – 2018</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="title">Business Analysis Learning Agent Skill</div>
+    <div>— · Cover</div>
+  </div>
+</section>
+
+<!-- ========== 2. DATA OVERVIEW ========== -->
+<section class="slide light">
+  <div class="chrome">
+    <div class="left">Data · Overview</div>
+    <div class="right">Act I · 02 / 09</div>
+  </div>
+  <div class="kicker" data-anim>第一步，先看清手里有什么</div>
+  <h2 class="h-xl" data-anim>数据概览</h2>
+  <div class="grid-4" style="margin-top:4vh">
+    <div class="stat-card" data-anim>
+      <div class="stat-label">Total Reviews</div>
+      <div class="stat-nb">5,000<span class="stat-unit">条</span></div>
+      <div class="stat-note">覆盖 100+ 款 Amazon 自有硬件产品</div>
+    </div>
+    <div class="stat-card" data-anim>
+      <div class="stat-label">Avg Rating</div>
+      <div class="stat-nb">4.60<span class="stat-unit">/ 5</span></div>
+      <div class="stat-note">中位数 5 分，标准差 0.73</div>
+    </div>
+    <div class="stat-card" data-anim>
+      <div class="stat-label">Recommend Rate</div>
+      <div class="stat-nb">95.3<span class="stat-unit">%</span></div>
+      <div class="stat-note">4,765 / 5,000 位用户愿意推荐</div>
+    </div>
+    <div class="stat-card" data-anim>
+      <div class="stat-label">Time Range</div>
+      <div class="stat-nb">3<span class="stat-unit">年</span></div>
+      <div class="stat-note">2015 年 12 月 – 2018 年 10 月</div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="title">Datafiniti Amazon Consumer Reviews · 2015-2018</div>
+    <div>— · 02</div>
+  </div>
+</section>
+
+<!-- ========== 3. RATING DISTRIBUTION ========== -->
+<section class="slide light">
+  <div class="chrome">
+    <div class="left">Analysis · Distribution</div>
+    <div class="right">Act I · 03 / 09</div>
+  </div>
+  <div class="kicker" data-anim>平均值会骗人</div>
+  <h2 class="h-xl" data-anim>评分不只是 4.60</h2>
+  <div class="split" style="margin-top:5vh">
+    <div class="col" style="gap:2.8vh">
+      <div data-anim>
+        <div style="font-family:var(--mono);font-size:11px;letter-spacing:.22em;opacity:.5;margin-bottom:1vh">RATING BREAKDOWN</div>
+        <div class="rowline">
+          <div class="k">★★★★★</div><div class="v">3,478 条</div><div class="m">69.6%</div>
+        </div>
+        <div class="rowline">
+          <div class="k">★★★★☆</div><div class="v">963 条</div><div class="m">19.3%</div>
+        </div>
+        <div class="rowline">
+          <div class="k">★★★☆☆</div><div class="v">445 条</div><div class="m">8.9%</div>
+        </div>
+        <div class="rowline">
+          <div class="k">★★☆☆☆</div><div class="v">69 条</div><div class="m">1.4%</div>
+        </div>
+        <div class="rowline">
+          <div class="k">★☆☆☆☆</div><div class="v">45 条</div><div class="m">0.9%</div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="gap:2.4vh;justify-content:center">
+      <div class="callout" data-anim>
+        <p>这是典型的<span class="hi">J 型分布</span>。</p>
+        <p style="margin-top:1.2vh">69.6% 的用户打满分，仅 2.3% 打 1-2 分。中间评分（3 分）只占 8.9%——用户很少觉得产品"还行"，要么非常满意，要么不满意。</p>
+        <span class="callout-src">电商评价的典型模式 · J-shaped Distribution</span>
+      </div>
+      <div class="stat-card" data-anim>
+        <div class="stat-label">Helpfulness Votes</div>
+        <div class="stat-nb" style="font-size:4.2vw">6.8<span class="stat-unit">%</span></div>
+        <div class="stat-note">仅 6.8% 的评论获得 ≥1 个"有帮助"投票，中位数为 0</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="title">评分分布 · J-shaped Distribution</div>
+    <div>— · 03</div>
+  </div>
+</section>
+
+<!-- ========== 4. CATEGORY COMPARISON ========== -->
+<section class="slide dark">
+  <div class="chrome">
+    <div class="left">Analysis · Categories</div>
+    <div class="right">Act II · 04 / 09</div>
+  </div>
+  <div class="kicker" data-anim>拆开看，差距就出来了</div>
+  <h2 class="h-xl" data-anim>品类对比：硬件赢了</h2>
+  <div class="grid-4" style="margin-top:4vh">
+    <div class="stat-card" data-anim>
+      <div class="stat-label">Electronics, Hardware</div>
+      <div class="stat-nb">4.70<span class="stat-unit">分</span></div>
+      <div class="stat-note">1,435 条评论 · 推荐率 96.5%<br>Fire TV / Echo / Kindle 设备</div>
+    </div>
+    <div class="stat-card" data-anim>
+      <div class="stat-label">Electronics, Media</div>
+      <div class="stat-nb">4.67<span class="stat-unit">分</span></div>
+      <div class="stat-note">24 条评论 · 推荐率 95.8%<br>样本量小，结论谨慎</div>
+    </div>
+    <div class="stat-card" data-anim>
+      <div class="stat-label">Office, Electronics</div>
+      <div class="stat-nb">4.62<span class="stat-unit">分</span></div>
+      <div class="stat-note">265 条评论 · 推荐率 94.0%<br>办公电子配件</div>
+    </div>
+    <div class="stat-card" data-anim>
+      <div class="stat-label">Electronics</div>
+      <div class="stat-nb">4.55<span class="stat-unit">分</span></div>
+      <div class="stat-note">3,276 条评论 · 推荐率 94.9%<br>最大品类，均分最低 — Fire 平板拉低</div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="title">品类分析 · Category Breakdown</div>
+    <div>— · 04</div>
+  </div>
+</section>
+
+<!-- ========== 5. PRODUCT RANKING ========== -->
+<section class="slide light">
+  <div class="chrome">
+    <div class="left">Analysis · Products</div>
+    <div class="right">Act II · 05 / 09</div>
+  </div>
+  <div class="kicker" data-anim>谁在塔尖，谁在塔底</div>
+  <h2 class="h-xl" data-anim>产品红黑榜</h2>
+  <div class="grid-2-6-6" style="margin-top:4vh">
+    <div class="col" style="gap:2vh">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.24em;opacity:.5" data-anim>TOP PERFORMERS</div>
+      <div class="rowline" data-anim>
+        <div class="k">Fire TV 4K</div><div class="v">均分 5.0</div><div class="m">4 条</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k">PowerFast Charger</div><div class="v">均分 4.9</div><div class="m">22 条</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k">Kindle Oasis</div><div class="v">均分 4.8</div><div class="m">39 条</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k">Kindle Voyage</div><div class="v">均分 4.8</div><div class="m">22 条</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k">Echo Plus</div><div class="v">均分 4.7</div><div class="m">590 条</div>
+      </div>
+    </div>
+    <div class="col" style="gap:2vh">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.24em;opacity:.5" data-anim>NEEDS ATTENTION (≥5 reviews)</div>
+      <div class="rowline" data-anim>
+        <div class="k">Fire HD 8 (32GB)</div><div class="v">均分 4.4</div><div class="m">70 条</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k">Kindle 6" (8th Gen)</div><div class="v">均分 4.4</div><div class="m">96 条</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k">Fire Tablet 7"</div><div class="v">均分 4.5</div><div class="m">371 条</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k">Amazon Tap</div><div class="v">均分 4.5</div><div class="m">225 条</div>
+      </div>
+      <div class="callout" data-anim style="margin-top:2vh">
+        <p>Fire 平板系列是<span class="hi">评分洼地</span>。差距虽小（0.2-0.4 分），但样本量大且稳定。入门级硬件的性能限制 vs 用户期望——这是典型的"约束型低分"。</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="title">产品排名 · Product Leaderboard</div>
+    <div>— · 05</div>
+  </div>
+</section>
+
+<!-- ========== 6. TREND ANALYSIS ========== -->
+<section class="slide dark">
+  <div class="chrome">
+    <div class="left">Analysis · Trend</div>
+    <div class="right">Act II · 06 / 09</div>
+  </div>
+  <div class="kicker" data-anim>时间会说真话吗</div>
+  <h2 class="h-xl" data-anim>趋势：稳如磐石</h2>
+  <div class="grid-2-7-5" style="margin-top:5vh">
+    <div class="col" style="gap:2.8vh">
+      <div data-anim>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:.24em;opacity:.5;margin-bottom:1.4vh">MONTHLY AVG RATING</div>
+        <div class="rowline">
+          <div class="k">2017-09</div><div class="v">5.00</div><div class="m">6 条</div>
+        </div>
+        <div class="rowline">
+          <div class="k">2017-10</div><div class="v">5.00</div><div class="m">9 条</div>
+        </div>
+        <div class="rowline">
+          <div class="k">2018-04</div><div class="v">4.70</div><div class="m">1,219 条</div>
+        </div>
+        <div class="rowline">
+          <div class="k">2018-05</div><div class="v">4.61</div><div class="m">295 条</div>
+        </div>
+        <div class="rowline">
+          <div class="k">2018-10</div><div class="v">4.72</div><div class="m">29 条</div>
+        </div>
+      </div>
+    </div>
+    <div class="col" style="gap:2.4vh;justify-content:center">
+      <div class="stat" data-anim>
+        <div class="m">Overall Change</div>
+        <div class="n" style="font-size:7vw">+1.2<span style="font-size:.4em;font-weight:400;opacity:.6">%</span></div>
+        <div class="l">从早期 4.67 → 近期 4.72<br>评分趋势基本持平</div>
+      </div>
+      <div class="callout" data-anim>
+        <p>趋势分析的实际意义<span class="hi">有限</span>：月度评论量波动大（6 条 ~ 1,219 条），且不同月份对应不同产品的评价周期。没有控制产品生命周期，趋势信号不可靠。</p>
+        <span class="callout-src">诚实面对数据的边界 · Limitation Acknowledged</span>
+      </div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="title">趋势分析 · Trend Analysis</div>
+    <div>— · 06</div>
+  </div>
+</section>
+
+<!-- ========== 7. KEY FINDINGS ========== -->
+<section class="slide hero light">
+  <div class="chrome">
+    <div class="left">Insight · Findings</div>
+    <div class="right">Act III · 07 / 09</div>
+  </div>
+  <div class="fill center col" style="gap:5vh">
+    <div class="kicker" data-anim>三个发现，三个商业问题</div>
+    <div class="grid-3" style="max-width:82vw;margin:0 auto;gap:4vw">
+      <div class="pillar" data-anim>
+        <div class="ic" style="font-size:4vw">01</div>
+        <div class="t">满意度整体高<br>但两极分化</div>
+        <div class="d">69.6% 打满分 vs 2.3% 打低分。J 型分布说明"中间地带"不存在——用户要么爱，要么不爱。</div>
+      </div>
+      <div class="pillar" data-anim>
+        <div class="ic" style="font-size:4vw">02</div>
+        <div class="t">Fire 平板<br>是评分洼地</div>
+        <div class="d">Fire Tablet 系列均分 4.4-4.5，比 Echo/Kindle 低 0.2-0.4 分。入门级产品的"约束型低分"。</div>
+      </div>
+      <div class="pillar" data-anim>
+        <div class="ic" style="font-size:4vw">03</div>
+        <div class="t">评论互动<br>几乎为零</div>
+        <div class="d">93.2% 的评论无人投票。用户在消费内容，但不参与互动——"沉默的大多数"。</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="title">关键发现 · Key Findings</div>
+    <div>— · 07</div>
+  </div>
+</section>
+
+<!-- ========== 8. RECOMMENDATIONS ========== -->
+<section class="slide light">
+  <div class="chrome">
+    <div class="left">Action · Recommendations</div>
+    <div class="right">Act III · 08 / 09</div>
+  </div>
+  <div class="kicker" data-anim>从数据到行动</div>
+  <h2 class="h-xl" data-anim>业务建议</h2>
+  <div style="margin-top:4vh;display:flex;flex-direction:column;gap:2.8vh">
+    <div class="rowline" data-anim style="grid-template-columns:2fr 3fr 2fr">
+      <div class="k" style="font-size:1.4vw">抽查 1-2 分评论</div>
+      <div class="v">对 114 条低分评论做文本分析，识别共性痛点——是性能、屏幕还是物流？</div>
+      <div class="m">→ 文本分析</div>
+    </div>
+    <div class="rowline" data-anim style="grid-template-columns:2fr 3fr 2fr">
+      <div class="k" style="font-size:1.4vw">优化 Fire 平板线</div>
+      <div class="v">Fire Tablet 系列均分垫底，考虑提升入门款的屏幕/性能，或调整用户期望管理</div>
+      <div class="m">→ 产品改进</div>
+    </div>
+    <div class="rowline" data-anim style="grid-template-columns:2fr 3fr 2fr">
+      <div class="k" style="font-size:1.4vw">追踪新品评分曲线</div>
+      <div class="v">新品发布后的前 3 个月评分趋势是产品质量的早期信号，建议建立监控看板</div>
+      <div class="m">→ 持续监控</div>
+    </div>
+    <div class="rowline" data-anim style="grid-template-columns:2fr 3fr 2fr">
+      <div class="k" style="font-size:1.4vw">分析高票评论特征</div>
+      <div class="v">仅 6.8% 的评论获得投票 — 了解"什么样的评论被认可"有助于引导高质量 UGC</div>
+      <div class="m">→ 内容策略</div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="title">业务建议 · Actionable Recommendations</div>
+    <div>— · 08</div>
+  </div>
+</section>
+
+<!-- ========== 9. CLOSING ========== -->
+<section class="slide hero dark">
+  <div class="chrome">
+    <div class="left">Closing · Summary</div>
+    <div class="right">Fin · 09 / 09</div>
+  </div>
+  <div class="fill center col" style="gap:4vh">
+    <div class="kicker" data-anim>分析结束，学习开始</div>
+    <h2 class="display-zh" data-anim style="font-size:5.8vw">从 5,000 条评论里<br>学到了什么</h2>
+    <div class="col" style="gap:1.8vh;max-width:56vw;margin-top:2vh" data-anim>
+      <p class="lead" style="font-size:1.5vw">✅ 整体满意度 ≠ 均匀分布 —— J 型曲线才是电商真相</p>
+      <p class="lead" style="font-size:1.5vw">✅ 分组排名分析是最基础也最有用的商业方法</p>
+      <p class="lead" style="font-size:1.5vw">✅ 中位数 vs 均值 —— 长尾分布下，中位数更诚实</p>
+    </div>
+    <div class="meta-row" data-anim style="margin-top:3vh">
+      <span>Business Analysis Learning Agent Skill</span>
+      <span>Generated 2026-06-02</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="title">Thank you · 谢谢</div>
+    <div>— · Fin</div>
+  </div>
+</section>
+
+</div><!-- /#deck -->
+<div id="nav"></div>
+
+<script>
+const VS=`attribute vec2 position;void main(){gl_Position=vec4(position,0.0,1.0);}`;
+const FS_DARK=`precision highp float;
+uniform vec2 u_resolution;uniform float u_time;uniform vec2 u_mouse;
+vec3 palette(float t,vec3 a,vec3 b,vec3 c,vec3 d){return a+b*cos(6.28318*(c*t+d));}
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_resolution.xy;
+  vec2 p=uv*2.0-1.0;p.x*=u_resolution.x/u_resolution.y;
+  vec2 m=u_mouse*2.0-1.0;m.x*=u_resolution.x/u_resolution.y;
+  float md=length(p-m);
+  float mr=sin(md*15.0-u_time*4.0)*exp(-md*3.0);p+=mr*0.08;
+  vec2 p0=p;
+  for(float i=1.0;i<4.0;i++){
+    p.x+=0.1/i*sin(i*3.0*p.y+u_time*0.4)+0.05;
+    p.y+=0.1/i*cos(i*2.0*p.x+u_time*0.3)-0.05;
+  }
+  float r=length(p);float ang=atan(p.y,p.x);
+  vec3 a=vec3(0.12,0.12,0.13);
+  vec3 b=vec3(0.03,0.04,0.05);
+  vec3 c=vec3(1.0,1.0,1.0);
+  vec3 d=vec3(0.1,0.2,0.4);
+  vec3 col=palette(r*1.5+p0.x*0.5+u_time*0.1,a,b,c,d);
+  float disp=sin(r*25.0-u_time*1.5+ang*2.0)*0.5+0.5;
+  col+=vec3(disp*0.015,disp*0.01,disp*0.02);
+  float hi=pow(sin(p.x*4.0+p.y*3.0+u_time)*0.5+0.5,8.0);
+  col+=hi*0.08;
+  vec3 base=vec3(0.05,0.05,0.06);
+  col=mix(base,col,0.85);
+  gl_FragColor=vec4(col,1.0);
+}`;
+const FS_LIGHT=`precision highp float;
+uniform vec2 u_resolution;uniform float u_time;uniform vec2 u_mouse;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float noise(vec2 p){
+  vec2 i=floor(p),f=fract(p);
+  float a=hash(i),b=hash(i+vec2(1,0));
+  float c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
+  vec2 u=f*f*(3.0-2.0*f);
+  return mix(a,b,u.x)+(c-a)*u.y*(1.0-u.x)+(d-b)*u.x*u.y;
+}
+float fbm(vec2 p){
+  float v=0.0,a=0.5;
+  mat2 m=mat2(0.80,0.60,-0.60,0.80);
+  for(int i=0;i<5;i++){v+=a*noise(p);p=m*p*2.02;a*=0.5;}
+  return v;
+}
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_resolution.xy;
+  vec2 p=uv;p.x*=u_resolution.x/u_resolution.y;
+  vec2 m=u_mouse;m.x*=u_resolution.x/u_resolution.y;
+  vec2 md=p-m;float dl=length(md);
+  p+=normalize(md+vec2(0.0001))*exp(-dl*5.0)*0.03;
+  vec2 q=vec2(fbm(p*1.8+u_time*0.07),fbm(p*1.8+vec2(5.2,1.3)+u_time*0.06));
+  vec2 r=vec2(fbm(p*2.0+q*1.3+vec2(1.7,9.2)+u_time*0.05),
+              fbm(p*2.0+q*1.3+vec2(8.3,2.8)+u_time*0.04));
+  float f=fbm(p*2.2+r*1.5);
+  vec3 silverDark=vec3(0.86,0.85,0.84);
+  vec3 paper=vec3(0.955,0.945,0.925);
+  vec3 col=mix(silverDark,paper,f);
+  float ph=r.x*2.2+u_time*0.35;
+  col+=vec3(0.78,0.62,0.92)*sin(ph)*0.055;
+  col+=vec3(0.55,0.72,0.95)*sin(ph*0.8+2.0)*0.05;
+  float hl=smoothstep(0.48,0.92,f);
+  col+=hl*0.06;
+  gl_FragColor=vec4(col,1.0);
+}`;
+const mouse={x:0.5,y:0.5};
+addEventListener('mousemove',e=>{mouse.x=e.clientX/innerWidth;mouse.y=e.clientY/innerHeight});
+function bootGL(canvasId,fsSrc){
+  const canvas=document.getElementById(canvasId);
+  const gl=canvas.getContext('webgl',{alpha:false,antialias:true});
+  if(!gl)return()=>false;
+  const mk=(t,s)=>{const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);return sh};
+  const prog=gl.createProgram();
+  gl.attachShader(prog,mk(gl.VERTEX_SHADER,VS));
+  gl.attachShader(prog,mk(gl.FRAGMENT_SHADER,fsSrc));
+  gl.linkProgram(prog);gl.useProgram(prog);
+  const buf=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+  const pos=gl.getAttribLocation(prog,'position');
+  gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
+  const lRes=gl.getUniformLocation(prog,'u_resolution');
+  const lT=gl.getUniformLocation(prog,'u_time');
+  const lM=gl.getUniformLocation(prog,'u_mouse');
+  const resize=()=>{
+    const d=Math.min(window.devicePixelRatio||1,2);
+    canvas.width=innerWidth*d;canvas.height=innerHeight*d;
+    gl.viewport(0,0,canvas.width,canvas.height);
+  };
+  addEventListener('resize',resize);resize();
+  return(tSec)=>{
+    gl.uniform2f(lRes,canvas.width,canvas.height);
+    gl.uniform1f(lT,tSec);
+    gl.uniform2f(lM,mouse.x,1-mouse.y);
+    gl.drawArrays(gl.TRIANGLES,0,6);
+    return true;
+  };
+}
+let drawDark=null,drawLight=null,glRAF=0,glT0=Date.now();
+function startGL(){
+  if(window.__lowPowerMode||glRAF)return;
+  if(!drawDark)drawDark=bootGL('bg-dark',FS_DARK);
+  if(!drawLight)drawLight=bootGL('bg-light',FS_LIGHT);
+  glT0=Date.now();
+  function loop(){
+    if(window.__lowPowerMode){glRAF=0;return;}
+    const t=(Date.now()-glT0)/1000;
+    drawDark(t);drawLight(t);
+    glRAF=requestAnimationFrame(loop);
+  }
+  glRAF=requestAnimationFrame(loop);
+}
+function stopGL(){
+  if(glRAF)cancelAnimationFrame(glRAF);
+  glRAF=0;
+}
+startGL();
+addEventListener('ppt-low-power-change',e=>{e.detail.on?stopGL():startGL();});
+const deck=document.getElementById('deck');
+const slides=deck.querySelectorAll('.slide');
+const nav=document.getElementById('nav');
+let idx=0,total=slides.length,lock=false;
+deck.style.width=(total*100)+'vw';
+slides.forEach((s,i)=>{
+  const b=document.createElement('button');
+  b.className='dot';b.dataset.i=i;b.setAttribute('aria-label','Page '+(i+1));
+  b.onclick=()=>go(i);
+  nav.appendChild(b);
+});
+function go(n){
+  if(lock)return;
+  idx=Math.max(0,Math.min(total-1,n));
+  window.__currentSlideIndex=idx;
+  deck.style.transform=`translateX(${-idx*100}vw)`;
+  nav.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===idx));
+  const el=slides[idx];
+  const th=el.dataset.theme||(el.classList.contains('light')?'light':(el.classList.contains('dark')?'dark':'dark'));
+  document.body.classList.toggle('light-bg',th==='light');
+  if(window.__playSlide)setTimeout(()=>window.__playSlide(idx),450);
+  lock=true;setTimeout(()=>lock=false,700);
+}
+const ov=document.createElement('div');
+ov.id='overview';
+ov.style.cssText='position:fixed;inset:0;z-index:100;background:rgba(var(--ink-rgb),.92);backdrop-filter:blur(12px);display:none;overflow-y:auto;padding:4vh 4vw';
+document.body.appendChild(ov);
+let overviewOn=false;
+function buildOverview(){
+  ov.innerHTML='';
+  const grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:2vh 1.6vw;max-width:90vw;margin:0 auto';
+  slides.forEach((s,i)=>{
+    const card=document.createElement('div');
+    card.style.cssText='cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid '+(i===idx?'rgba(var(--paper-rgb),.8)':'rgba(var(--paper-rgb),.15)')+';transition:border-color .2s';
+    card.onmouseenter=()=>card.style.borderColor='rgba(var(--paper-rgb),.6)';
+    card.onmouseleave=()=>card.style.borderColor=i===idx?'rgba(var(--paper-rgb),.8)':'rgba(var(--paper-rgb),.15)';
+    const wrap=document.createElement('div');
+    wrap.style.cssText='width:100%;aspect-ratio:16/9;overflow:hidden;position:relative;pointer-events:none;background:'+(s.classList.contains('light')?'var(--paper)':'var(--ink)');
+    const clone=s.cloneNode(true);
+    clone.style.cssText='width:100vw;height:100vh;transform:scale('+(1/4.5)+');transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none';
+    wrap.appendChild(clone);
+    const label=document.createElement('div');
+    label.style.cssText='padding:6px 10px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--paper);opacity:.7';
+    label.textContent=(i+1)+' / '+total;
+    card.appendChild(wrap);
+    card.appendChild(label);
+    card.onclick=()=>{toggleOverview();go(i)};
+    grid.appendChild(card);
+  });
+  ov.appendChild(grid);
+}
+function toggleOverview(){
+  overviewOn=!overviewOn;
+  if(overviewOn){buildOverview();ov.style.display='block';}
+  else{ov.style.display='none';}
+}
+addEventListener('keydown',e=>{
+  if(e.key==='Escape'){e.preventDefault();toggleOverview();return;}
+  if(e.key&&e.key.toLowerCase()==='b'&&!e.metaKey&&!e.ctrlKey&&!e.altKey){e.preventDefault();window.__setLowPowerMode(!window.__lowPowerMode);return;}
+  if(overviewOn)return;
+  if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '||e.key==='ArrowDown'){if(window.__pipeAdvance&&window.__pipeAdvance())return;go(idx+1);return;}
+  if(e.key==='ArrowLeft'||e.key==='PageUp'||e.key==='ArrowUp')go(idx-1);
+  if(e.key==='Home')go(0);
+  if(e.key==='End')go(total-1);
+});
+let wheelTO=null,wheelAcc=0;
+addEventListener('wheel',e=>{
+  wheelAcc+=e.deltaY+e.deltaX;
+  if(Math.abs(wheelAcc)>50){
+    if(wheelAcc>0&&window.__pipeAdvance&&window.__pipeAdvance()){wheelAcc=0;}
+    else{go(idx+(wheelAcc>0?1:-1));wheelAcc=0;}
+  }
+  clearTimeout(wheelTO);wheelTO=setTimeout(()=>wheelAcc=0,150);
+},{passive:true});
+let tx=0,ty=0;
+addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+addEventListener('touchend',e=>{
+  const dx=(e.changedTouches[0].clientX-tx);
+  const dy=(e.changedTouches[0].clientY-ty);
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)){if(dx<0&&window.__pipeAdvance&&window.__pipeAdvance())return;go(idx+(dx<0?1:-1));}
+},{passive:true});
+go(0);
+</script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+<script type="module">
+let motion;
+try{
+  motion=await import('./assets/motion.min.js');
+}catch(e1){
+  try{
+    motion=await import('https://cdn.jsdelivr.net/npm/motion@11.11.17/+esm');
+  }catch(e2){
+    console.warn('[motion] local + CDN both failed, disabling animations',e1,e2);
+    document.querySelectorAll('[data-anim]').forEach(el=>{el.style.opacity='1';el.style.transform='none'});
+    document.querySelectorAll('[data-animate="pipeline"] [data-anim]').forEach(el=>el.style.opacity='1');
+  }
+}
+if(motion){
+  const{animate,stagger}=motion;
+  document.body.classList.add('motion-ready');
+  const EASE=[.22,1,.36,1];
+  const slides=[...document.querySelectorAll('.slide')];
+  let pipeStep=-1;
+  let lastIdx=-1;
+  function resetAnims(slide){
+    slide.querySelectorAll('[data-anim]').forEach(el=>{el.style.opacity='';el.style.transform=''});
+  }
+  function revealStatic(slide){
+    resetAnims(slide);
+    document.getAnimations?.().forEach(a=>a.cancel());
+    slide.querySelectorAll('[data-anim]').forEach(el=>{el.style.opacity='1';el.style.transform='none'});
+  }
+  function playSlide(i){
+    const slide=slides[i];
+    if(!slide)return;
+    lastIdx=i;
+    const recipe=slide.dataset.animate||(slide.classList.contains('hero')?'hero':'cascade');
+    if(window.__lowPowerMode){revealStatic(slide);return;}
+    if(recipe==='pipeline'){
+      pipeStep=-1;
+      slide.querySelectorAll('[data-anim]').forEach(el=>{el.style.opacity='0.15';el.style.transform='none'});
+      return;
+    }
+    resetAnims(slide);
+    const all=[...slide.querySelectorAll('[data-anim]')];
+    if(!all.length)return;
+    if(recipe==='directional'){
+      const lefts=all.filter(el=>el.dataset.anim==='left');
+      const divs=all.filter(el=>el.dataset.anim==='divider');
+      const rights=all.filter(el=>el.dataset.anim==='right');
+      const others=all.filter(el=>!['left','right','divider'].includes(el.dataset.anim));
+      if(others.length)animate(others,{opacity:[0,1],y:[12,0]},{duration:.6,delay:stagger(.1,{start:.15}),easing:EASE});
+      if(lefts.length)animate(lefts,{opacity:[0,1],x:[-24,0]},{duration:.8,delay:.35,easing:EASE});
+      if(divs.length)animate(divs,{opacity:[0,.25]},{duration:.5,delay:.9});
+      if(rights.length)animate(rights,{opacity:[0,1],x:[24,0]},{duration:.8,delay:1.0,easing:EASE});
+      return;
+    }
+    if(recipe==='quote'){
+      const lines=all.filter(el=>el.dataset.anim==='line');
+      const others=all.filter(el=>el.dataset.anim!=='line');
+      if(others.length)animate(others,{opacity:[0,1],y:[8,0]},{duration:.6,delay:stagger(.12,{start:.2}),easing:EASE});
+      if(lines.length)animate(lines,{opacity:[.35,1],y:[10,0]},{duration:.8,delay:stagger(.55,{start:.5}),easing:EASE});
+      return;
+    }
+    if(recipe==='hero'){
+      animate(all,{opacity:[0,1],y:[14,0]},{duration:.9,delay:stagger(.16,{start:.2}),easing:EASE});
+      return;
+    }
+    animate(all,{opacity:[0,1],y:[16,0]},{duration:.75,delay:stagger(.1,{start:.15}),easing:EASE});
+  }
+  function pipeAdvance(){
+    if(window.__lowPowerMode)return false;
+    const slide=slides[lastIdx];
+    if(!slide||slide.dataset.animate!=='pipeline')return false;
+    const steps=[...slide.querySelectorAll('[data-anim="step"]')];
+    const arrows=[...slide.querySelectorAll('[data-anim="arrow"]')];
+    if(pipeStep>=steps.length-1)return false;
+    pipeStep++;
+    animate(steps[pipeStep],{opacity:[.15,1],y:[8,0]},{duration:.5,easing:EASE});
+    if(pipeStep>0&&arrows[pipeStep-1]){animate(arrows[pipeStep-1],{opacity:[.15,.7]},{duration:.3,delay:.15})}
+    return true;
+  }
+  window.__playSlide=playSlide;
+  window.__pipeAdvance=pipeAdvance;
+  playSlide(0);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>零售门店运营分析 · Retail Store Operations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@300;400;500;600&family=Noto+Serif+SC:wght@300;400;500;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ============ 主题色: 🌙 沙丘 (Dune) ============ */
+    --ink:#1f1a14;
+    --ink-rgb:31,26,20;
+    --paper:#f0e6d2;
+    --paper-rgb:240,230,210;
+    --paper-tint:#e3d7bf;
+    --ink-tint:#2d2620;
+
+    /* ============ 字体(跨主题固定) ============ */
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+    --serif-en:"Playfair Display","Source Serif 4",Georgia,serif;
+    --serif-body-en:"Source Serif 4",Georgia,serif;
+    --serif-zh:"Noto Serif SC",source-han-serif-sc,serif;
+    --sans-zh:"Noto Sans SC",source-han-sans-sc,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);color:var(--paper);font-family:var(--sans-zh);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+
+  /* ============ WebGL 双背景 ============ */
+  canvas.bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;display:block;transition:opacity 1.2s ease}
+  canvas#bg-light{opacity:0}
+  canvas#bg-dark{opacity:1}
+  body.light-bg canvas#bg-light{opacity:1}
+  body.light-bg canvas#bg-dark{opacity:0}
+  body.low-power canvas.bg{display:none!important}
+
+  /* ============ Deck 容器 + 翻页 ============ */
+  #deck{position:fixed;inset:0;width:10000vw;height:100vh;display:flex;flex-wrap:nowrap;transition:transform .9s cubic-bezier(.77,0,.175,1);z-index:10;will-change:transform}
+  .slide{width:100vw;height:100vh;flex:0 0 100vw;position:relative;padding:6vh 6vw 10vh 6vw;display:flex;flex-direction:column;overflow:hidden}
+  .slide.light{color:var(--ink);background:var(--paper)}
+  .slide.dark{color:var(--paper);background:var(--ink)}
+
+  .slide::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;transition:background .7s ease}
+  .slide.light::before{background:rgba(var(--paper-rgb),.78);backdrop-filter:blur(3px)}
+  .slide.dark::before{background:rgba(var(--ink-rgb),.78);backdrop-filter:blur(3px)}
+  .slide.hero.light::before{background:rgba(var(--paper-rgb),.16);backdrop-filter:none}
+  .slide.hero.dark::before{background:rgba(var(--ink-rgb),.12);backdrop-filter:none}
+  .slide.hero::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none}
+  .slide.hero.light::after{background:linear-gradient(180deg,rgba(var(--paper-rgb),.28) 0%,rgba(var(--paper-rgb),0) 14%,rgba(var(--paper-rgb),0) 86%,rgba(var(--paper-rgb),.28) 100%)}
+  .slide.hero.dark::after{background:linear-gradient(180deg,rgba(var(--ink-rgb),.32) 0%,rgba(var(--ink-rgb),0) 14%,rgba(var(--ink-rgb),0) 86%,rgba(var(--ink-rgb),.32) 100%)}
+
+  .chrome{display:flex;justify-content:space-between;align-items:flex-start;font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
+  .chrome .left,.chrome .right{display:flex;gap:2.4em;align-items:center}
+  .chrome .sep{width:40px;height:1px;background:currentColor;opacity:.4}
+  .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.55}
+  .foot .title{font-family:var(--serif-zh);font-weight:400;letter-spacing:.05em;text-transform:none;opacity:.75;font-size:13px}
+
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;padding:6px 14px;border:1px solid currentColor;opacity:.85}
+  .rule{width:100%;height:1px;background:currentColor;opacity:.25;margin:3vh 0}
+  .rule.v{width:1px;height:100%;margin:0}
+
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.3em;text-transform:uppercase;opacity:.6;margin-bottom:2.6vh}
+  .display{font-family:var(--serif-en);font-weight:700;font-size:11vw;line-height:.92;letter-spacing:-.025em}
+  .display-zh{font-family:var(--serif-zh);font-weight:700;font-size:7.8vw;line-height:1.04;letter-spacing:-.005em}
+  .h1-zh{font-family:var(--serif-zh);font-weight:700;font-size:4.6vw;line-height:1.12;letter-spacing:-.005em}
+  .h2-zh{font-family:var(--serif-zh);font-weight:600;font-size:3.2vw;line-height:1.2;letter-spacing:0}
+  .h3-zh{font-family:var(--serif-zh);font-weight:500;font-size:1.9vw;line-height:1.35}
+  .body-zh{font-family:var(--sans-zh);font-weight:400;font-size:max(15px,1.22vw);line-height:1.75;opacity:.82;letter-spacing:.01em}
+  .body-serif{font-family:var(--serif-zh);font-weight:400;font-size:max(15px,1.3vw);line-height:1.65;opacity:.88}
+  .lead{font-family:var(--serif-zh);font-weight:400;font-size:1.9vw;line-height:1.4;opacity:.85}
+  .meta{font-family:var(--mono);font-size:max(11px,.88vw);letter-spacing:.16em;text-transform:uppercase;opacity:.6}
+  .big-num{font-family:var(--serif-en);font-weight:800;font-size:10vw;line-height:.85;letter-spacing:-.03em;font-feature-settings:"tnum"}
+  .mid-num{font-family:var(--serif-en);font-weight:700;font-size:5.5vw;line-height:.88;letter-spacing:-.02em;font-feature-settings:"tnum"}
+  .ghost{font-family:var(--serif-en);font-weight:900;font-size:34vw;line-height:.8;opacity:.06;letter-spacing:-.04em;position:absolute;font-feature-settings:"tnum"}
+  em{font-style:italic;font-family:var(--serif-en)}
+  .en{font-family:var(--serif-en);font-style:italic;font-weight:500}
+
+  .col{display:flex;flex-direction:column;gap:2.4vh}
+  .row{display:flex;align-items:center;gap:3vw}
+  .grid-6{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:4vw 6vw;flex:1;align-content:center;padding:2vh 0}
+  .grid-9{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:3vh 4vw;flex:1;align-content:center}
+  .grid-4{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:4vh 6vw;flex:1;align-content:center}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:4vw;flex:1;align-content:center}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:4vw;flex:1;align-items:center}
+  .split-55{display:grid;grid-template-columns:55fr 45fr;gap:5vw;flex:1;align-items:stretch}
+  .fill{flex:1}
+  .center{align-items:center;justify-content:center;text-align:center}
+  .bottom-left{position:absolute;left:6vw;bottom:9vh;max-width:50vw}
+  .bottom-right{position:absolute;right:6vw;bottom:9vh;max-width:50vw;text-align:right}
+  .top-right{position:absolute;right:6vw;top:6vh;text-align:right}
+
+  .stat{display:flex;flex-direction:column;gap:1vh;align-items:flex-start}
+  .stat .n{font-family:var(--serif-en);font-weight:800;font-size:8vw;line-height:.88;letter-spacing:-.03em;font-feature-settings:"tnum"}
+  .stat .l{font-family:var(--sans-zh);font-size:max(13px,1.05vw);opacity:.7;margin-top:1vh;font-weight:400;line-height:1.5}
+  .stat .m{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.5;margin-bottom:.2vh}
+
+  .callout{padding:3vh 2.4vw;border-left:3px solid currentColor;position:relative;font-family:var(--serif-zh);font-size:max(15px,1.2vw);line-height:1.55;opacity:.92}
+  .slide.light .callout{background:rgba(var(--ink-rgb),.05)}
+  .slide.dark .callout{background:rgba(var(--paper-rgb),.06)}
+  .callout .cite{display:block;margin-top:1.6vh;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.6}
+  .callout .q-big{font-family:var(--serif-zh);font-weight:600;font-size:max(17px,1.6vw);line-height:1.42}
+
+  .plat{display:flex;flex-direction:column;justify-content:flex-end;padding:2vh 0;border-top:1px solid currentColor;border-color:rgba(127,127,127,.35)}
+  .plat .name{font-family:var(--serif-zh);font-weight:700;font-size:1.8vw;margin-bottom:.6vh}
+  .plat .nb{font-family:var(--serif-en);font-weight:700;font-size:3.2vw;letter-spacing:-.02em;line-height:1;font-feature-settings:"tnum"}
+  .plat .sub{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;opacity:.55;margin-top:.6vh}
+  .plat .fill{font-family:var(--sans-zh);font-weight:300;font-size:2.4vw;opacity:.28;letter-spacing:-.01em;line-height:1}
+
+  .rowline{display:grid;grid-template-columns:1fr 2fr 1fr;gap:2vw;padding:2.2vh 0;border-top:1px solid currentColor;align-items:center;border-color:rgba(127,127,127,.25)}
+  .rowline:last-child{border-bottom:1px solid currentColor;border-color:rgba(127,127,127,.25)}
+  .rowline .k{font-family:var(--serif-zh);font-weight:700;font-size:1.7vw}
+  .rowline .v{font-family:var(--sans-zh);font-weight:400;font-size:max(14px,1.2vw);opacity:.85;line-height:1.55}
+  .rowline .m{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.6;justify-self:end}
+
+  .pillar{display:flex;flex-direction:column;gap:1.8vh}
+  .pillar .ic{font-family:var(--serif-en);font-style:italic;font-size:2.6vw;opacity:.45;font-weight:400}
+  .pillar .ic svg{width:2.8vw;height:2.8vw;stroke-width:1.2;opacity:.7}
+  .pillar .t{font-family:var(--serif-zh);font-weight:700;font-size:2.4vw;line-height:1.1}
+  .pillar .d{font-family:var(--sans-zh);font-weight:400;font-size:max(14px,1.1vw);opacity:.76;line-height:1.6}
+
+  .sign{font-family:var(--serif-en);font-style:italic;font-weight:500;font-size:2vw;opacity:.7}
+  .hi{position:relative;display:inline}
+  .slide.dark .hi::after{content:"";position:absolute;left:-.1em;right:-.1em;bottom:-.05em;height:.28em;background:rgba(var(--paper-rgb),.15);z-index:-1}
+  .slide.light .hi::after{content:"";position:absolute;left:-.1em;right:-.1em;bottom:-.05em;height:.28em;background:rgba(var(--ink-rgb),.08);z-index:-1}
+
+  .ico{width:1em;height:1em;display:inline-block;vertical-align:-.12em;stroke:currentColor;fill:none;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+  .h-hero{font-family:var(--serif-zh);font-weight:900;font-size:10vw;line-height:.96;letter-spacing:-.02em}
+  .h-xl{font-family:var(--serif-zh);font-weight:700;font-size:6.2vw;line-height:1.08;letter-spacing:-.01em}
+  .h-sub{font-family:var(--serif-zh);font-weight:500;font-size:3.1vw;line-height:1.25;letter-spacing:0;opacity:.7}
+  .h-md{font-family:var(--serif-zh);font-weight:600;font-size:2.3vw;line-height:1.3}
+  .lead{font-family:var(--serif-zh);font-weight:400;font-size:1.75vw;line-height:1.5;opacity:.86}
+  .meta-row{display:flex;gap:1.2em;align-items:baseline;flex-wrap:wrap;font-family:var(--mono);font-size:max(12px,.92vw);letter-spacing:.16em;text-transform:uppercase;opacity:.6}
+
+  .stat-card{display:flex;flex-direction:column;gap:.8vh;align-items:flex-start;padding-top:1.6vh;border-top:1px solid currentColor;border-color:rgba(127,127,127,.3)}
+  .stat-card .stat-label{font-family:var(--mono);font-size:max(10px,.78vw);letter-spacing:.24em;text-transform:uppercase;opacity:.55}
+  .stat-card .stat-nb{font-family:var(--serif-en);font-weight:800;font-size:5.8vw;line-height:.9;letter-spacing:-.03em;font-feature-settings:"tnum";margin-top:.4vh}
+  .stat-card .stat-nb .stat-unit{font-family:var(--serif-zh);font-weight:500;font-size:.38em;letter-spacing:0;opacity:.72;margin-left:.14em}
+  .stat-card .stat-note{font-family:var(--sans-zh);font-weight:400;font-size:max(13px,1.05vw);line-height:1.5;opacity:.72;margin-top:.6vh}
+  .grid-4 .stat-card .stat-nb{font-size:5vw}
+  .grid-3 .stat-card .stat-nb{font-size:6.8vw}
+
+  .pipeline-section{margin-top:4.4vh;padding-top:2.8vh;border-top:1px dashed rgba(127,127,127,.32)}
+  .pipeline-section:first-of-type{border-top:0;padding-top:0;margin-top:3vh}
+  .pipeline-label{font-family:var(--mono);font-size:max(11px,.85vw);letter-spacing:.24em;text-transform:uppercase;opacity:.62;margin-bottom:2.2vh}
+  .pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:1.2vw}
+  .step{display:flex;flex-direction:column;gap:.8vh;padding-top:1.4vh;border-top:1px solid currentColor;border-color:rgba(127,127,127,.35)}
+  .step-nb{font-family:var(--serif-en);font-style:italic;font-weight:500;font-size:1.15vw;opacity:.45}
+  .step-title{font-family:var(--sans-zh);font-weight:700;font-size:1.55vw;letter-spacing:.01em;line-height:1.2}
+  .step-desc{font-family:var(--sans-zh);font-weight:400;font-size:max(12px,.95vw);line-height:1.45;opacity:.72}
+
+  .grid-2-7-5{display:grid;grid-template-columns:7fr 5fr;gap:3vw 4vh;align-items:start}
+  .grid-2-6-6{display:grid;grid-template-columns:1fr 1fr;gap:3vw 4vh;align-items:start}
+  .grid-2-8-4{display:grid;grid-template-columns:8fr 4fr;gap:3vw 4vh;align-items:start}
+  .grid-3-3{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(0,1fr);gap:2.4vh 2vw}
+  .frame{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+
+  [data-anim]{opacity:1}
+  body.motion-ready [data-anim]{opacity:0}
+  body.motion-ready [data-anim="left"]{transform:translateX(-24px)}
+  body.motion-ready [data-anim="right"]{transform:translateX(24px)}
+  body.motion-ready [data-anim="line"]{opacity:0;transform:translateY(10px)}
+  body.motion-ready [data-animate="pipeline"] [data-anim]{opacity:.15}
+  body.low-power #deck{transition:none!important}
+  body.low-power *,body.low-power *::before,body.low-power *::after{animation:none!important;transition:none!important}
+  body.low-power.motion-ready [data-anim],body.low-power [data-anim]{opacity:1!important;transform:none!important}
+
+  @media (max-width:900px){
+    .display{font-size:16vw}
+    .display-zh{font-size:12vw}
+    .h1-zh{font-size:7vw}
+    .h-hero{font-size:14vw}
+    .h-xl{font-size:9vw}
+    .pipeline{grid-template-columns:repeat(2,1fr)}
+    .grid-2-7-5,.grid-2-6-6,.grid-2-8-4{grid-template-columns:1fr}
+  }
+
+  /* Custom table style for this deck */
+  .data-table{width:100%;border-collapse:collapse;font-family:var(--sans-zh);font-size:max(13px,1.05vw);margin-top:1vh}
+  .data-table th{font-family:var(--mono);font-size:max(10px,.78vw);letter-spacing:.16em;text-transform:uppercase;opacity:.6;text-align:left;padding:1.2vh 1vw;border-bottom:1px solid currentColor;border-color:rgba(127,127,127,.3);font-weight:400}
+  .data-table td{padding:1.2vh 1vw;border-bottom:1px solid currentColor;border-color:rgba(127,127,127,.12);font-weight:400}
+  .data-table .num{font-family:var(--serif-en);font-feature-settings:"tnum";text-align:right}
+  .data-table tr:last-child td{border-bottom:none}
+  .data-table .hi td{font-weight:600;opacity:1}
+  .slide.dark .data-table .hi td{color:rgba(255,255,255,.9)}
+  .slide.light .data-table .hi td{color:rgba(0,0,0,.85)}
+</style>
+</head>
+<body>
+<script>
+  (function(){
+    const KEY = 'guizang-ppt-low-power';
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const stored = localStorage.getItem(KEY);
+    window.__lowPowerMode = stored === '1' || (stored === null && reduced);
+    function updateHint(){
+      const hint = document.getElementById('hint');
+      if(hint) hint.textContent = '← → 翻页 · B 静态 · ESC 索引';
+    }
+    window.__setLowPowerMode = function(on, opts={}){
+      window.__lowPowerMode = !!on;
+      document.body.classList.toggle('low-power', window.__lowPowerMode);
+      if(opts.persist !== false) localStorage.setItem(KEY, window.__lowPowerMode ? '1' : '0');
+      if(window.__lowPowerMode && document.getAnimations) document.getAnimations().forEach(a=>a.cancel());
+      updateHint();
+      dispatchEvent(new CustomEvent('ppt-low-power-change', {detail:{on:window.__lowPowerMode}}));
+      if(window.__playSlide) window.__playSlide(window.__currentSlideIndex || 0);
+    };
+    document.body.classList.toggle('low-power', window.__lowPowerMode);
+    addEventListener('DOMContentLoaded', updateHint, {once:true});
+  })();
+</script>
+
+<canvas id="bg-dark" class="bg"></canvas>
+<canvas id="bg-light" class="bg"></canvas>
+<div id="hint">← → 翻页 · B 静态 · ESC 索引</div>
+
+<div id="deck">
+
+<!-- ══════════════════════════════════════════════════════════
+     SLIDE 1 · COVER
+     Layout: hero dark
+     ══════════════════════════════════════════════════════════ -->
+<section class="slide hero dark">
+  <div class="chrome">
+    <div>RETAIL · STORE OPERATIONS</div>
+    <div>Vol.01</div>
+  </div>
+  <div class="frame" style="display:grid; gap:4vh; align-content:center; min-height:80vh">
+    <div class="kicker" data-anim>Walmart · Store Retail Analysis</div>
+    <h1 class="h-hero" data-anim>零售门店运营分析</h1>
+    <h2 class="h-sub" data-anim>45 家门店 · 81 个部门 · 2.5 年销售数据</h2>
+    <p class="lead" style="max-width:55vw" data-anim>
+      从 421,570 条销售记录中找出驱动零售业绩的核心因素。
+    </p>
+    <div class="meta-row" data-anim>
+      <span>Business Analysis Learning Agent</span><span>·</span><span>2026.06</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div>零售运营 · 数据分析报告</div>
+    <div>— 2026 —</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     SLIDE 2 · BIG NUMBERS
+     Layout: light, grid-6 stat cards
+     ══════════════════════════════════════════════════════════ -->
+<section class="slide light">
+  <div class="chrome">
+    <div>数据概览 · Dataset Overview</div>
+    <div>02 / 09</div>
+  </div>
+  <div class="frame" style="padding-top:5vh">
+    <div class="kicker" data-anim>The Big Picture · 全景数据</div>
+    <h2 class="h-xl" data-anim>2.5 年，45 家门店</h2>
+    <p class="lead" style="margin-bottom:4vh" data-anim>Walmart 门店运营的全景扫描。</p>
+    <div class="grid-6" style="margin-top:4vh">
+      <div class="stat-card" data-anim>
+        <div class="stat-label">Total Sales</div>
+        <div class="stat-nb">$6.74 <span class="stat-unit">B</span></div>
+        <div class="stat-note">总销售额 67.4 亿美元</div>
+      </div>
+      <div class="stat-card" data-anim>
+        <div class="stat-label">Stores</div>
+        <div class="stat-nb">45</div>
+        <div class="stat-note">3 种类型 · A / B / C</div>
+      </div>
+      <div class="stat-card" data-anim>
+        <div class="stat-label">Departments</div>
+        <div class="stat-nb">81</div>
+        <div class="stat-note">覆盖全品类</div>
+      </div>
+      <div class="stat-card" data-anim>
+        <div class="stat-label">Weekly Avg</div>
+        <div class="stat-nb">$15,981</div>
+        <div class="stat-note">周均销售额</div>
+      </div>
+      <div class="stat-card" data-anim>
+        <div class="stat-label">Period</div>
+        <div class="stat-nb">2.5 <span class="stat-unit">年</span></div>
+        <div class="stat-note">2010.02 → 2012.10</div>
+      </div>
+      <div class="stat-card" data-anim>
+        <div class="stat-label">Records</div>
+        <div class="stat-nb">421K</div>
+        <div class="stat-note">销售记录总数</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">
+    <div>数据集 · store_retail_operations</div>
+    <div>3 张关联表合并</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     SLIDE 3 · STORE TYPES
+     Layout: dark, data table
+     ══════════════════════════════════════════════════════════ -->
+<section class="slide dark">
+  <div class="chrome">
+    <div>门店类型 · Store Segmentation</div>
+    <div>03 / 09</div>
+  </div>
+  <div class="frame" style="padding-top:5vh">
+    <div class="kicker" data-anim>Segment Divergence · 分层差异</div>
+    <h2 class="h-xl" data-anim>三种门店，三种业绩</h2>
+    <p class="lead" style="margin-bottom:3vh" data-anim>A 型门店周均销售额是 C 型的 2.1 倍，面积差距却达 4.4 倍。</p>
+    <table class="data-table" style="margin-top:2vh">
+      <tr><th>类型</th><th>数量</th><th>平均面积</th><th class="num">平均周销售额</th><th class="num">占比</th></tr>
+      <tr class="hi"><td>A 型</td><td>22</td><td>177,248 sqft</td><td class="num">$20,100</td><td class="num">64.3%</td></tr>
+      <tr><td>B 型</td><td>17</td><td>101,191 sqft</td><td class="num">$12,237</td><td class="num">29.7%</td></tr>
+      <tr><td>C 型</td><td>6</td><td>40,542 sqft</td><td class="num">$9,520</td><td class="num">6.0%</td></tr>
+    </table>
+    <div class="callout" style="margin-top:5vh" data-anim>
+      面积与销售额强相关（r=0.81），但边际效益递减。小门店的坪效（每平方英尺销售额）更高。
+      <div class="cite">面积的投入产出比并非线性</div>
+    </div>
+  </div>
+  <div class="foot">
+    <div>门店面积 vs 销售额</div>
+    <div>相关系数 0.81</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     SLIDE 4 · TOP DEPARTMENTS
+     Layout: light, Pareto
+     ══════════════════════════════════════════════════════════ -->
+<section class="slide light">
+  <div class="chrome">
+    <div>部门集中度 · Department Concentration</div>
+    <div>04 / 09</div>
+  </div>
+  <div class="frame" style="padding-top:5vh">
+    <div class="kicker" data-anim>Power Law · 幂律分布</div>
+    <h2 class="h-xl" data-anim>少数部门驱动多数收入</h2>
+    <p class="lead" style="margin-bottom:2vh" data-anim>Top 5 部门贡献 28.5% 的销售额，底部 20 个部门合计不到 5%。</p>
+    <table class="data-table" style="margin-top:1vh">
+      <tr><th>排名</th><th>部门</th><th class="num">总销售额</th><th class="num">占比</th></tr>
+      <tr class="hi"><td>1</td><td>Dept 92</td><td class="num">$4.84 亿</td><td class="num">7.2%</td></tr>
+      <tr class="hi"><td>2</td><td>Dept 95</td><td class="num">$4.49 亿</td><td class="num">6.7%</td></tr>
+      <tr class="hi"><td>3</td><td>Dept 38</td><td class="num">$3.93 亿</td><td class="num">5.8%</td></tr>
+      <tr><td>4</td><td>Dept 72</td><td class="num">$3.06 亿</td><td class="num">4.5%</td></tr>
+      <tr><td>5</td><td>Dept 90</td><td class="num">$2.91 亿</td><td class="num">4.3%</td></tr>
+    </table>
+    <div class="callout" style="margin-top:4vh" data-anim>
+      资源应优先集中在前 10 个高贡献部门。底部部门需要重新评估库存效率和货架空间分配。
+      <div class="cite">帕累托法则（80/20）在零售部门分布中高度适用</div>
+    </div>
+  </div>
+  <div class="foot">
+    <div>部门集中度分析</div>
+    <div>Top 5 = 28.5%</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     SLIDE 5 · HOLIDAY EFFECT
+     Layout: dark, with callout
+     ══════════════════════════════════════════════════════════ -->
+<section class="slide dark">
+  <div class="chrome">
+    <div>节假日效应 · Holiday Effect</div>
+    <div>05 / 09</div>
+  </div>
+  <div class="frame" style="padding-top:5vh">
+    <div class="kicker" data-anim>Decomposition · 分解思维</div>
+    <h2 class="h-xl" data-anim>节假日 +7.1%，<br>但故事不止于此</h2>
+    <p class="lead" style="margin-bottom:4vh" data-anim>整体增幅温和，拆到部门级却暗藏剧烈分化。</p>
+    <div class="grid-2-6-6" style="gap:4vw; margin-top:2vh">
+      <div style="display:flex; flex-direction:column; gap:3vh">
+        <div class="stat-card" data-anim>
+          <div class="stat-label">非节假日周均</div>
+          <div class="stat-nb">$15,901</div>
+        </div>
+        <div class="stat-card" data-anim>
+          <div class="stat-label">节假日周均</div>
+          <div class="stat-nb">$17,036</div>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:2vh">
+        <div class="rowline">
+          <div class="k">部门差异</div>
+          <div class="v">部分部门节假日增幅 +303%，<br>部分跌幅 -152%</div>
+          <div class="m">极端分化</div>
+        </div>
+        <div class="rowline">
+          <div class="k">关键问题</div>
+          <div class="v">哪些部门在节假日反而<br>销售额下降？为什么？</div>
+          <div class="m">待排查</div>
+        </div>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:3vh" data-anim>
+      汇总数字 7.1% 听起来温和。拆开看，才发现不同类型部门的节假日命运截然不同。不要只看平均数。
+      <div class="cite">Decomposition · 按部门拆解后发现真相</div>
+    </div>
+  </div>
+  <div class="foot">
+    <div>节假日效应分析</div>
+    <div>整体 +7.1%</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     SLIDE 6 · THINKING MODELS
+     Layout: hero light
+     ══════════════════════════════════════════════════════════ -->
+<section class="slide hero light">
+  <div class="chrome">
+    <div>思维模型 · Thinking Models</div>
+    <div>06 / 09</div>
+  </div>
+  <div class="frame" style="display:grid; gap:5vh; align-content:center; min-height:80vh">
+    <div class="kicker" data-anim>Framework · 可复用的分析思维</div>
+    <h1 class="h-hero" style="font-size:7.5vw" data-anim>三个思维模型</h1>
+    <div class="grid-3" style="margin-top:3vh; gap:3vw">
+      <div class="pillar" data-anim>
+        <div class="t">01 · 分解思维</div>
+        <div class="d">汇总数字会隐藏真相。按门店类型/部门/节假日拆开，才能看到真正的业务驱动因素。节假日 +7.1% 的背后是 +303% 到 -152% 的极端分化。</div>
+      </div>
+      <div class="pillar" data-anim>
+        <div class="t">02 · 分层差异</div>
+        <div class="d">不要相信平均值。A 型门店 $20,100 vs C 型 $9,520，差距 2.1 倍。$15,981 的平均值不代表任何一类门店。</div>
+      </div>
+      <div class="pillar" data-anim>
+        <div class="t">03 · 杠杆点</div>
+        <div class="d">聚焦高份额 + 高差异的分组。A 型门店占销售额 64%，优化它们的坪效投入产出比最高。Top 3 部门贡献 19.7%，优先优化。</div>
+      </div>
+    </div>
+    <div class="meta-row" data-anim>
+      <span>Decomposition</span><span>·</span><span>Segment Divergence</span><span>·</span><span>Leverage Point</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div>可复用的业务分析思维框架</div>
+    <div>3 Models</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     SLIDE 7 · RECOMMENDATIONS
+     Layout: dark, rowlines
+     ══════════════════════════════════════════════════════════ -->
+<section class="slide dark">
+  <div class="chrome">
+    <div>行动建议 · Recommendations</div>
+    <div>07 / 09</div>
+  </div>
+  <div class="frame" style="padding-top:5vh">
+    <div class="kicker" data-anim>Actionable · 可执行</div>
+    <h2 class="h-xl" data-anim>四个行动方向</h2>
+    <p class="lead" style="margin-bottom:2vh" data-anim>从数据分析到业务决策。</p>
+    <div style="margin-top:3vh">
+      <div class="rowline" data-anim>
+        <div class="k"><span style="color:#c0392b">🔴 高</span></div>
+        <div class="v">识别节假日期间销售额反而下滑的部门，分析根因</div>
+        <div class="m">部门同比增速</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k"><span style="color:#e67e22">🟡 中</span></div>
+        <div class="v">对底部 20 个低贡献部门做库存周转分析，考虑缩减面积或优化选品</div>
+        <div class="m">部门贡献率</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k"><span style="color:#27ae60">🟢 中</span></div>
+        <div class="v">对比 A/B/C 型门店的坪效，找出高效率门店的特征并复制</div>
+        <div class="m">每平方英尺销售额</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k"><span style="color:#2980b9">🔵 低</span></div>
+        <div class="v">建立 CPI/失业率与销售额的联动监控，作为需求预测输入</div>
+        <div class="m">外部指标关联</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">
+    <div>基于 421,570 条销售记录的分析结论</div>
+    <div>4 Actions</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     SLIDE 8 · KEY INSIGHT
+     Layout: light, takeaway
+     ══════════════════════════════════════════════════════════ -->
+<section class="slide light" data-animate="quote">
+  <div class="chrome">
+    <div>Takeaway · 核心总结</div>
+    <div>08 / 09</div>
+  </div>
+  <div class="frame" style="display:grid; gap:5vh; align-content:center; min-height:80vh">
+    <div class="kicker" data-anim>Key Insight · 核心洞察</div>
+    <blockquote style="font-family:var(--serif-zh); font-weight:700; font-size:4.8vw; line-height:1.25; letter-spacing:-.01em; max-width:75vw">
+      <span data-anim="line" style="display:block">"拆开看，</span>
+      <span data-anim="line" style="display:block">才知道平均值</span>
+      <span data-anim="line" style="display:block">骗了你多少。"</span>
+    </blockquote>
+    <p class="lead" style="max-width:55vw; opacity:.65" data-anim>
+      零售运营的核心不是知道总销售额，<br>是知道哪家店、哪个部门、什么时候驱动了增长。
+    </p>
+    <div class="meta-row" data-anim>
+      <span>Business Analysis Learning Agent</span><span>·</span><span>零售运营分析</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div>Page 08 · 核心洞察</div>
+    <div>— · —</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════
+     SLIDE 9 · CLOSING
+     Layout: hero dark
+     ══════════════════════════════════════════════════════════ -->
+<section class="slide hero dark">
+  <div class="chrome">
+    <div>NEXT · 下一步分析</div>
+    <div>09 / 09</div>
+  </div>
+  <div class="frame" style="display:grid; gap:5vh; align-content:center; min-height:80vh">
+    <div class="kicker" data-anim>Recommended Next Analysis</div>
+    <h1 class="h-hero" style="font-size:7vw" data-anim>接下来做什么？</h1>
+    <div style="display:flex; flex-direction:column; gap:3vh; margin-top:2vh">
+      <div class="rowline" data-anim>
+        <div class="k">部门深度分析</div>
+        <div class="v">按 Dept×Store 交叉分析，找出异常门店</div>
+        <div class="m">Dept</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k">需求预测</div>
+        <div class="v">引入天气、节假日、本地事件做预测模型</div>
+        <div class="m">Forecast</div>
+      </div>
+      <div class="rowline" data-anim>
+        <div class="k">坪效排名</div>
+        <div class="v">计算每平方英尺销售额，定位最佳实践</div>
+        <div class="m">Efficiency</div>
+      </div>
+    </div>
+    <div class="meta-row" data-anim>
+      <span>RETAIL · STORE OPERATIONS</span>
+    </div>
+  </div>
+  <div class="foot">
+    <div>数据分析学习 Agent · 零售运营</div>
+    <div>— 2026 —</div>
+  </div>
+</section>
+
+</div>
+
+<div id="nav"></div>
+
+<script>
+/* =============== WebGL 双背景 =============== */
+const VS = `attribute vec2 position;void main(){gl_Position=vec4(position,0.0,1.0);}`;
+
+const FS_DARK = `precision highp float;
+uniform vec2 u_resolution;uniform float u_time;uniform vec2 u_mouse;
+vec3 palette(float t,vec3 a,vec3 b,vec3 c,vec3 d){return a+b*cos(6.28318*(c*t+d));}
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_resolution.xy;
+  vec2 p=uv*2.0-1.0;p.x*=u_resolution.x/u_resolution.y;
+  vec2 m=u_mouse*2.0-1.0;m.x*=u_resolution.x/u_resolution.y;
+  float md=length(p-m);
+  float mr=sin(md*15.0-u_time*4.0)*exp(-md*3.0);p+=mr*0.08;
+  vec2 p0=p;
+  for(float i=1.0;i<4.0;i++){
+    p.x+=0.1/i*sin(i*3.0*p.y+u_time*0.4)+0.05;
+    p.y+=0.1/i*cos(i*2.0*p.x+u_time*0.3)-0.05;
+  }
+  float r=length(p);float ang=atan(p.y,p.x);
+  vec3 a=vec3(0.12,0.12,0.13);
+  vec3 b=vec3(0.03,0.04,0.05);
+  vec3 c=vec3(1.0,1.0,1.0);
+  vec3 d=vec3(0.1,0.2,0.4);
+  vec3 col=palette(r*1.5+p0.x*0.5+u_time*0.1,a,b,c,d);
+  float disp=sin(r*25.0-u_time*1.5+ang*2.0)*0.5+0.5;
+  col+=vec3(disp*0.015,disp*0.01,disp*0.02);
+  float hi=pow(sin(p.x*4.0+p.y*3.0+u_time)*0.5+0.5,8.0);
+  col+=hi*0.08;
+  vec3 base=vec3(0.05,0.05,0.06);
+  col=mix(base,col,0.85);
+  gl_FragColor=vec4(col,1.0);
+}`;
+
+const FS_LIGHT = `precision highp float;
+uniform vec2 u_resolution;uniform float u_time;uniform vec2 u_mouse;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float noise(vec2 p){
+  vec2 i=floor(p),f=fract(p);
+  float a=hash(i),b=hash(i+vec2(1,0));
+  float c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));
+  vec2 u=f*f*(3.0-2.0*f);
+  return mix(a,b,u.x)+(c-a)*u.y*(1.0-u.x)+(d-b)*u.x*u.y;
+}
+float fbm(vec2 p){
+  float v=0.0,a=0.5;
+  mat2 m=mat2(0.80,0.60,-0.60,0.80);
+  for(int i=0;i<5;i++){v+=a*noise(p);p=m*p*2.02;a*=0.5;}
+  return v;
+}
+void main(){
+  vec2 uv=gl_FragCoord.xy/u_resolution.xy;
+  vec2 p=uv;p.x*=u_resolution.x/u_resolution.y;
+  vec2 m=u_mouse;m.x*=u_resolution.x/u_resolution.y;
+  vec2 md=p-m;float dl=length(md);
+  p+=normalize(md+vec2(0.0001))*exp(-dl*5.0)*0.03;
+  vec2 q=vec2(fbm(p*1.8+u_time*0.07),fbm(p*1.8+vec2(5.2,1.3)+u_time*0.06));
+  vec2 r=vec2(fbm(p*2.0+q*1.3+vec2(1.7,9.2)+u_time*0.05),fbm(p*2.0+q*1.3+vec2(8.3,2.8)+u_time*0.04));
+  float f=fbm(p*2.2+r*1.5);
+  vec3 silverDark=vec3(0.86,0.85,0.84);
+  vec3 paper=vec3(0.955,0.945,0.925);
+  vec3 col=mix(silverDark,paper,f);
+  float ph=r.x*2.2+u_time*0.35;
+  col+=vec3(0.78,0.62,0.92)*sin(ph)*0.055;
+  col+=vec3(0.55,0.72,0.95)*sin(ph*0.8+2.0)*0.05;
+  float hl=smoothstep(0.48,0.92,f);
+  col+=hl*0.06;
+  gl_FragColor=vec4(col,1.0);
+}`;
+
+const mouse={x:0.5,y:0.5};
+addEventListener('mousemove',e=>{mouse.x=e.clientX/innerWidth;mouse.y=e.clientY/innerHeight});
+
+function bootGL(canvasId, fsSrc){
+  const canvas=document.getElementById(canvasId);
+  const gl=canvas.getContext('webgl',{alpha:false,antialias:true});
+  if(!gl) return ()=>false;
+  const mk=(t,s)=>{const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);return sh};
+  const prog=gl.createProgram();
+  gl.attachShader(prog,mk(gl.VERTEX_SHADER,VS));
+  gl.attachShader(prog,mk(gl.FRAGMENT_SHADER,fsSrc));
+  gl.linkProgram(prog);gl.useProgram(prog);
+  const buf=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
+  const pos=gl.getAttribLocation(prog,'position');
+  gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,2,gl.FLOAT,false,0,0);
+  const lRes=gl.getUniformLocation(prog,'u_resolution');
+  const lT=gl.getUniformLocation(prog,'u_time');
+  const lM=gl.getUniformLocation(prog,'u_mouse');
+  const resize=()=>{
+    const d=Math.min(window.devicePixelRatio||1,2);
+    canvas.width=innerWidth*d;canvas.height=innerHeight*d;
+    gl.viewport(0,0,canvas.width,canvas.height);
+  };
+  addEventListener('resize',resize);resize();
+  return (tSec)=>{
+    gl.uniform2f(lRes,canvas.width,canvas.height);
+    gl.uniform1f(lT,tSec);
+    gl.uniform2f(lM,mouse.x,1-mouse.y);
+    gl.drawArrays(gl.TRIANGLES,0,6);
+    return true;
+  };
+}
+let drawDark=null, drawLight=null, glRAF=0, glT0=Date.now();
+function startGL(){
+  if(window.__lowPowerMode || glRAF) return;
+  if(!drawDark) drawDark=bootGL('bg-dark',FS_DARK);
+  if(!drawLight) drawLight=bootGL('bg-light',FS_LIGHT);
+  glT0=Date.now();
+  function loop(){
+    if(window.__lowPowerMode){glRAF=0;return;}
+    const t=(Date.now()-glT0)/1000;
+    drawDark(t);drawLight(t);
+    glRAF=requestAnimationFrame(loop);
+  }
+  glRAF=requestAnimationFrame(loop);
+}
+function stopGL(){if(glRAF) cancelAnimationFrame(glRAF);glRAF=0;}
+startGL();
+addEventListener('ppt-low-power-change', e=>{e.detail.on ? stopGL() : startGL();});
+
+// =============== Navigation
+const deck=document.getElementById('deck');
+const slides=deck.querySelectorAll('.slide');
+const nav=document.getElementById('nav');
+let idx=0,total=slides.length,lock=false;
+
+deck.style.width=(total*100)+'vw';
+
+slides.forEach((s,i)=>{
+  const b=document.createElement('button');
+  b.className='dot';b.dataset.i=i;b.setAttribute('aria-label','Page '+(i+1));
+  b.onclick=()=>go(i);
+  nav.appendChild(b);
+});
+
+function go(n){
+  if(lock)return;
+  idx=Math.max(0,Math.min(total-1,n));
+  window.__currentSlideIndex = idx;
+  deck.style.transform=`translateX(${-idx*100}vw)`;
+  nav.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===idx));
+  const el=slides[idx];
+  const th=el.dataset.theme || (el.classList.contains('light')?'light':(el.classList.contains('dark')?'dark':'dark'));
+  document.body.classList.toggle('light-bg',th==='light');
+  if(window.__playSlide) setTimeout(()=>window.__playSlide(idx), 450);
+  lock=true;setTimeout(()=>lock=false,700);
+}
+
+// ESC overview
+let overviewOn=false;
+const ov=document.createElement('div');
+ov.id='overview';
+ov.style.cssText='position:fixed;inset:0;z-index:100;background:rgba(var(--ink-rgb),.92);backdrop-filter:blur(12px);display:none;overflow-y:auto;padding:4vh 4vw';
+document.body.appendChild(ov);
+
+function buildOverview(){
+  ov.innerHTML='';
+  const grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:2vh 1.6vw;max-width:90vw;margin:0 auto';
+  slides.forEach((s,i)=>{
+    const card=document.createElement('div');
+    card.style.cssText='cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid '+(i===idx?'rgba(var(--paper-rgb),.8)':'rgba(var(--paper-rgb),.15)')+';transition:border-color .2s';
+    card.onmouseenter=()=>card.style.borderColor='rgba(var(--paper-rgb),.6)';
+    card.onmouseleave=()=>card.style.borderColor=i===idx?'rgba(var(--paper-rgb),.8)':'rgba(var(--paper-rgb),.15)';
+    const wrap=document.createElement('div');
+    wrap.style.cssText='width:100%;aspect-ratio:16/9;overflow:hidden;position:relative;pointer-events:none;background:'+(s.classList.contains('light')?'var(--paper)':'var(--ink)');
+    const clone=s.cloneNode(true);
+    clone.style.cssText='width:100vw;height:100vh;transform:scale('+(1/4.5)+');transform-origin:top left;position:absolute;top:0;left:0;pointer-events:none';
+    wrap.appendChild(clone);
+    const label=document.createElement('div');
+    label.style.cssText='padding:6px 10px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--paper);opacity:.7';
+    label.textContent=(i+1)+' / '+total;
+    card.appendChild(wrap);
+    card.appendChild(label);
+    card.onclick=()=>{toggleOverview();go(i)};
+    grid.appendChild(card);
+  });
+  ov.appendChild(grid);
+}
+
+function toggleOverview(){
+  overviewOn=!overviewOn;
+  if(overviewOn){buildOverview();ov.style.display='block';}
+  else{ov.style.display='none';}
+}
+
+addEventListener('keydown',e=>{
+  if(e.key==='Escape'){e.preventDefault();toggleOverview();return;}
+  if(e.key && e.key.toLowerCase()==='b' && !e.metaKey && !e.ctrlKey && !e.altKey){e.preventDefault();window.__setLowPowerMode(!window.__lowPowerMode);return;}
+  if(overviewOn)return;
+  if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '||e.key==='ArrowDown'){go(idx+1);return;}
+  if(e.key==='ArrowLeft'||e.key==='PageUp'||e.key==='ArrowUp')go(idx-1);
+  if(e.key==='Home')go(0);
+  if(e.key==='End')go(total-1);
+});
+
+let wheelTO=null,wheelAcc=0;
+addEventListener('wheel',e=>{
+  wheelAcc+=e.deltaY+e.deltaX;
+  if(Math.abs(wheelAcc)>50){go(idx+(wheelAcc>0?1:-1));wheelAcc=0;}
+  clearTimeout(wheelTO);wheelTO=setTimeout(()=>wheelAcc=0,150);
+},{passive:true});
+
+let tx=0,ty=0;
+addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+addEventListener('touchend',e=>{
+  const dx=(e.changedTouches[0].clientX-tx);
+  const dy=(e.changedTouches[0].clientY-ty);
+  if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)){go(idx+(dx<0?1:-1));}
+},{passive:true});
+
+go(0);
+</script>
+
+<!-- Motion One -->
+<script type="module">
+let motion;
+try {
+  motion = await import('./assets/motion.min.js');
+} catch(e1) {
+  try {
+    motion = await import('https://cdn.jsdelivr.net/npm/motion@11.11.17/+esm');
+  } catch(e2) {
+    console.warn('[motion] local + CDN both failed, disabling animations', e1, e2);
+    document.querySelectorAll('[data-anim]').forEach(el=>{el.style.opacity='1';el.style.transform='none'});
+    document.querySelectorAll('[data-animate="pipeline"] [data-anim]').forEach(el=>el.style.opacity='1');
+  }
+}
+
+if(motion){
+  const { animate, stagger } = motion;
+  document.body.classList.add('motion-ready');
+  const EASE = [.22, 1, .36, 1];
+  const slides = [...document.querySelectorAll('.slide')];
+  let lastIdx = -1;
+
+  function resetAnims(slide){
+    slide.querySelectorAll('[data-anim]').forEach(el=>{el.style.opacity='';el.style.transform='';});
+  }
+
+  function revealStatic(slide){
+    resetAnims(slide);
+    document.getAnimations?.().forEach(a=>a.cancel());
+    slide.querySelectorAll('[data-anim]').forEach(el=>{el.style.opacity='1';el.style.transform='none';});
+  }
+
+  function playSlide(i){
+    const slide = slides[i];
+    if(!slide) return;
+    lastIdx = i;
+    const recipe = slide.dataset.animate || (slide.classList.contains('hero') ? 'hero' : 'cascade');
+
+    if(window.__lowPowerMode){revealStatic(slide);return;}
+
+    resetAnims(slide);
+    const all = [...slide.querySelectorAll('[data-anim]')];
+    if(!all.length) return;
+
+    if(recipe === 'quote'){
+      const lines = all.filter(el=>el.dataset.anim==='line');
+      const others = all.filter(el=>el.dataset.anim!=='line');
+      if(others.length) animate(others, {opacity:[0,1], y:[8,0]}, {duration:.6, delay:stagger(.12, {start:.2}), easing:EASE});
+      if(lines.length) animate(lines, {opacity:[.35,1], y:[10,0]}, {duration:.8, delay:stagger(.55, {start:.5}), easing:EASE});
+      return;
+    }
+
+    if(recipe === 'hero'){
+      animate(all, {opacity:[0,1], y:[14,0]}, {duration:.9, delay:stagger(.16, {start:.2}), easing:EASE});
+      return;
+    }
+
+    // default: cascade
+    animate(all, {opacity:[0,1], y:[16,0]}, {duration:.75, delay:stagger(.1, {start:.15}), easing:EASE});
+  }
+
+  window.__playSlide = playSlide;
+  playSlide(0);
+}
+</script>
+</body>
+</html>

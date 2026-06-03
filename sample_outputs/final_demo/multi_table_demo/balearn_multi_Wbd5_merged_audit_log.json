@@ -1,0 +1,303 @@
+{
+  "schema_version": "0.1.0",
+  "result_schema_version": "0.2.0",
+  "input_file": "/tmp/balearn_multi_Wbd5",
+  "run_timestamp": "2026-06-02T13:57:50.501861",
+  "analysis_mode": "audit_report",
+  "dataset_profile": {
+    "rows": 4,
+    "columns": 5,
+    "field_names": [
+      "store_id",
+      "revenue",
+      "cost",
+      "region",
+      "size"
+    ],
+    "field_types": {
+      "store_id": "object",
+      "revenue": "int64",
+      "cost": "int64",
+      "region": "object",
+      "size": "object"
+    },
+    "missing_values": {},
+    "duplicate_rows": 0,
+    "time_range": ""
+  },
+  "field_semantics": [
+    {
+      "field": "store_id",
+      "inferred_meaning": "Unique identifier",
+      "confidence": "high",
+      "matched_rule": "Matched pattern: (?i)^(id|.*_id|.*_uuid|.*_key)$"
+    },
+    {
+      "field": "revenue",
+      "inferred_meaning": "Revenue / total sales",
+      "confidence": "high",
+      "matched_rule": "Matched pattern: (?i)^(revenue|sales|total_revenue|gross_revenue|net_revenue)$"
+    },
+    {
+      "field": "cost",
+      "inferred_meaning": "Marketing spend / cost",
+      "confidence": "high",
+      "matched_rule": "Matched pattern: (?i)^(spent|spend|ad_spend|cost|cpc|cpm|total_spent)$"
+    },
+    {
+      "field": "region",
+      "inferred_meaning": "Geographic region",
+      "confidence": "high",
+      "matched_rule": "Matched pattern: (?i)^(country|region|market|area)$"
+    },
+    {
+      "field": "size",
+      "inferred_meaning": "Store size / square footage",
+      "confidence": "high",
+      "matched_rule": "Matched pattern: (?i)^(size|store_size|sq_ft)$"
+    }
+  ],
+  "matched_metrics": [
+    {
+      "metric_name": "Total Revenue",
+      "formula": "SUM(revenue) = 645,000.00",
+      "used_fields": [],
+      "current_value": 645000
+    }
+  ],
+  "skipped_metrics": [
+    {
+      "metric_name": "Total Spent",
+      "required_fields": [
+        "cost",
+        "spend",
+        "Spent",
+        "Cost",
+        "spent"
+      ],
+      "missing_fields": [
+        "cost",
+        "spend",
+        "Spent",
+        "Cost",
+        "spent"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Impressions",
+      "required_fields": [
+        "Impressions",
+        "impressions"
+      ],
+      "missing_fields": [
+        "Impressions",
+        "impressions"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Clicks",
+      "required_fields": [
+        "clicks",
+        "Clicks"
+      ],
+      "missing_fields": [
+        "clicks",
+        "Clicks"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Net Income",
+      "required_fields": [
+        "profit",
+        "Net_Income",
+        "Profit",
+        "net_income"
+      ],
+      "missing_fields": [
+        "profit",
+        "Net_Income",
+        "Profit",
+        "net_income"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Assets",
+      "required_fields": [
+        "Total_Assets",
+        "total_assets"
+      ],
+      "missing_fields": [
+        "Total_Assets",
+        "total_assets"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Avg Rating",
+      "required_fields": [
+        "reviews.rating",
+        "Rating",
+        "rating",
+        "score"
+      ],
+      "missing_fields": [
+        "reviews.rating",
+        "Rating",
+        "rating",
+        "score"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Churn Rate",
+      "required_fields": [
+        "Churn",
+        "is_churn",
+        "churn",
+        "churn_flag"
+      ],
+      "missing_fields": [
+        "Churn",
+        "is_churn",
+        "churn",
+        "churn_flag"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "MRR",
+      "required_fields": [
+        "mrr",
+        "MonthlyCharges",
+        "mrr_amount",
+        "monthly_charges"
+      ],
+      "missing_fields": [
+        "mrr",
+        "MonthlyCharges",
+        "mrr_amount",
+        "monthly_charges"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "ARR",
+      "required_fields": [
+        "arr",
+        "arr_amount"
+      ],
+      "missing_fields": [
+        "arr",
+        "arr_amount"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Charges",
+      "required_fields": [
+        "total_charges",
+        "TotalCharges"
+      ],
+      "missing_fields": [
+        "total_charges",
+        "TotalCharges"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Support Tickets",
+      "required_fields": [
+        "support_ticket_id",
+        "ticket",
+        "ticket_id",
+        "case_id"
+      ],
+      "missing_fields": [
+        "support_ticket_id",
+        "ticket",
+        "ticket_id",
+        "case_id"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Avg Satisfaction",
+      "required_fields": [
+        "nps",
+        "satisfaction_score",
+        "NPS",
+        "csat",
+        "satisfaction"
+      ],
+      "missing_fields": [
+        "nps",
+        "satisfaction_score",
+        "NPS",
+        "csat",
+        "satisfaction"
+      ],
+      "reason": "No matching field found in dataset"
+    },
+    {
+      "metric_name": "Total Conversions",
+      "required_fields": [
+        "approved_conversion",
+        "Conversions",
+        "Total_Conversion",
+        "conversions"
+      ],
+      "missing_fields": [
+        "approved_conversion",
+        "Conversions",
+        "Total_Conversion",
+        "conversions"
+      ],
+      "reason": "No matching field found in dataset"
+    }
+  ],
+  "executed_methods": [
+    {
+      "method_name": "grouped_ranking_analysis",
+      "trigger_condition": "Categorical field(s) exist: region",
+      "used_fields": [
+        "region"
+      ],
+      "output": "9 ranking table(s) generated"
+    },
+    {
+      "method_name": "distribution_analysis",
+      "trigger_condition": "Numeric field(s) exist",
+      "used_fields": [],
+      "output": "2 distribution table(s) generated"
+    }
+  ],
+  "skipped_methods": [
+    {
+      "method_name": "trend_analysis",
+      "required_condition": "A datetime column must exist in the dataset",
+      "reason": "No date/time field detected"
+    }
+  ],
+  "data_quality_risks": [],
+  "output_files": [
+    {
+      "type": "excel",
+      "path": "/tmp/balearn_sim_multi/balearn_multi_Wbd5_analysis.xlsx",
+      "status": "generated"
+    },
+    {
+      "type": "pdf",
+      "path": "/tmp/balearn_sim_multi/balearn_multi_Wbd5_report.pdf",
+      "status": "generated"
+    },
+    {
+      "type": "ppt",
+      "path": "/tmp/balearn_sim_multi/balearn_multi_Wbd5_presentation.pptx",
+      "status": "skipped"
+    }
+  ]
+}

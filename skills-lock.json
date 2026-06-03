@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "design-dna": {
+      "source": "zanwei/design-dna",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "56b76cd0743e80d98ee5060e42f237474d3624f42f33854f119efb0d1a339d0c"
+    },
+    "guizang-ppt-skill": {
+      "source": "op7418/guizang-ppt-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "b56f400b1d9daa263b67a9b915da350113ef166ea44436184d2f2371fed14b92"
+    }
+  }
+}

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Store Revenue Analysis · 门店经营分析</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@300;400;500;600&family=Noto+Serif+SC:wght@300;400;500;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0a0a0b;
+    --ink-rgb:10,10,11;
+    --paper:#f1efea;
+    --paper-rgb:241,239,234;
+    --paper-tint:#e8e5de;
+    --ink-tint:#18181a;
+    --mono:"IBM Plex Mono",ui-monospace,monospace;
+    --serif-en:"Playfair Display","Source Serif 4",Georgia,serif;
+    --serif-body-en:"Source Serif 4",Georgia,serif;
+    --serif-zh:"Noto Serif SC",source-han-serif-sc,serif;
+    --sans-zh:"Noto Sans SC",source-han-sans-sc,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);color:var(--paper);font-family:var(--sans-zh);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+
+  canvas.bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;display:block;transition:opacity 1.2s ease}
+  canvas#bg-light{opacity:0}
+  canvas#bg-dark{opacity:1}
+  body.light-bg canvas#bg-light{opacity:1}
+  body.light-bg canvas#bg-dark{opacity:0}
+  body.low-power canvas.bg{display:none!important}
+
+  #deck{position:fixed;inset:0;width:900vw;height:100vh;display:flex;flex-wrap:nowrap;transition:transform .9s cubic-bezier(.77,0,.175,1);z-index:10;will-change:transform}
+  .slide{width:100vw;height:100vh;flex:0 0 100vw;position:relative;padding:6vh 6vw 10vh 6vw;display:flex;flex-direction:column;overflow:hidden}
+  .slide.light{color:var(--ink);background:var(--paper)}
+  .slide.dark{color:var(--paper);background:var(--ink)}
+  .slide::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;transition:background .7s ease}
+  .slide.light::before{background:rgba(var(--paper-rgb),.78);backdrop-filter:blur(3px)}
+  .slide.dark::before{background:rgba(var(--ink-rgb),.78);backdrop-filter:blur(3px)}
+  .slide.hero.light::before{background:rgba(var(--paper-rgb),.16);backdrop-filter:none}
+  .slide.hero.dark::before{background:rgba(var(--ink-rgb),.12);backdrop-filter:none}
+  .slide.hero::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none}
+  .slide.hero.light::after{background:linear-gradient(180deg,rgba(var(--paper-rgb),.28) 0%,rgba(var(--paper-rgb),0) 14%,rgba(var(--paper-rgb),0) 86%,rgba(var(--paper-rgb),.28) 100%)}
+  .slide.hero.dark::after{background:linear-gradient(180deg,rgba(var(--ink-rgb),.32) 0%,rgba(var(--ink-rgb),0) 14%,rgba(var(--ink-rgb),0) 86%,rgba(var(--ink-rgb),.32) 100%)}
+
+  .chrome{display:flex;justify-content:space-between;align-items:flex-start;font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;opacity:.7}
+  .chrome .left,.chrome .right{display:flex;gap:2.4em;align-items:center}
+  .chrome .sep{width:40px;height:1px;background:currentColor;opacity:.4}
+  .foot{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.55}
+  .foot .title{font-family:var(--serif-zh);font-weight:400;letter-spacing:.05em;text-transform:none;opacity:.75;font-size:13px}
+
+  .tag{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;padding:6px 14px;border:1px solid currentColor;opacity:.85}
+  .rule{width:100%;height:1px;background:currentColor;opacity:.25;margin:3vh 0}
+
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.3em;text-transform:uppercase;opacity:.6;margin-bottom:2.6vh}
+  .display{font-family:var(--serif-en);font-weight:700;font-size:11vw;line-height:.92;letter-spacing:-.025em}
+  .display-zh{font-family:var(--serif-zh);font-weight:700;font-size:7.8vw;line-height:1.04;letter-spacing:-.005em}
+  .h1-zh{font-family:var(--serif-zh);font-weight:700;font-size:4.6vw;line-height:1.12;letter-spacing:-.005em}
+  .h2-zh{font-family:var(--serif-zh);font-weight:600;font-size:3.2vw;line-height:1.2;letter-spacing:0}
+  .h3-zh{font-family:var(--serif-zh);font-weight:500;font-size:1.9vw;line-height:1.35}
+  .body-zh{font-family:var(--sans-zh);font-weight:400;font-size:max(15px,1.22vw);line-height:1.75;opacity:.82;letter-spacing:.01em}
+  .body-serif{font-family:var(--serif-zh);font-weight:400;font-size:max(15px,1.3vw);line-height:1.65;opacity:.88}
+  .lead{font-family:var(--serif-zh);font-weight:400;font-size:1.75vw;line-height:1.5;opacity:.86}
+  .meta{font-family:var(--mono);font-size:max(11px,.88vw);letter-spacing:.16em;text-transform:uppercase;opacity:.6}
+  .big-num{font-family:var(--serif-en);font-weight:800;font-size:10vw;line-height:.85;letter-spacing:-.03em;font-feature-settings:"tnum"}
+  .mid-num{font-family:var(--serif-en);font-weight:700;font-size:5.5vw;line-height:.88;letter-spacing:-.02em;font-feature-settings:"tnum"}
+  .ghost{font-family:var(--serif-en);font-weight:900;font-size:34vw;line-height:.8;opacity:.06;letter-spacing:-.04em;position:absolute;font-feature-settings:"tnum"}
+  em{font-style:italic;font-family:var(--serif-en)}
+  .en{font-family:var(--serif-en);font-style:italic;font-weight:500}
+
+  .col{display:flex;flex-direction:column;gap:2.4vh}
+  .row{display:flex;align-items:center;gap:3vw}
+  .grid-6{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:4vw 6vw;flex:1;align-content:center;padding:2vh 0}
+  .grid-4{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:4vh 6vw;flex:1;align-content:center}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:4vw;flex:1;align-content:center}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:4vw;flex:1;align-items:center}
+  .fill{flex:1}
+  .center{align-items:center;justify-content:center;text-align:center}
+  .bottom-left{position:absolute;left:6vw;bottom:9vh;max-width:50vw}
+  .bottom-right{position:absolute;right:6vw;bottom:9vh;max-width:50vw;text-align:right}
+
+  .stat{display:flex;flex-direction:column;gap:1vh;align-items:flex-start}
+  .stat .n{font-family:var(--serif-en);font-weight:800;font-size:8vw;line-height:.88;letter-spacing:-.03em;font-feature-settings:"tnum"}
+  .stat .l{font-family:var(--sans-zh);font-size:max(13px,1.05vw);opacity:.7;margin-top:1vh;font-weight:400;line-height:1.5}
+  .stat .m{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;opacity:.5;margin-bottom:.2vh}
+
+  .callout{padding:3vh 2.4vw;border-left:3px solid currentColor;position:relative;font-family:var(--serif-zh);font-size:max(15px,1.2vw);line-height:1.55;opacity:.92}
+  .slide.light .callout{background:rgba(var(--ink-rgb),.05)}
+  .slide.dark .callout{background:rgba(var(--paper-rgb),.06)}
+  .callout .q-big{font-family:var(--serif-zh);font-weight:600;font-size:max(17px,1.6vw);line-height:1.42}
+
+  .rowline{display:grid;grid-template-columns:1fr 2fr 1fr;gap:2vw;padding:2.2vh 0;border-top:1px solid currentColor;align-items:center;border-color:rgba(127,127,127,.25)}
+  .rowline:last-child{border-bottom:1px solid currentColor;border-color:rgba(127,127,127,.25)}
+  .rowline .k{font-family:var(--serif-zh);font-weight:700;font-size:1.7vw}
+  .rowline .v{font-family:var(--sans-zh);font-weight:400;font-size:max(14px,1.2vw);opacity:.85;line-height:1.55}
+  .rowline .m{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.6;justify-self:end}
+
+  .pillar{display:flex;flex-direction:column;gap:1.8vh}
+  .pillar .t{font-family:var(--serif-zh);font-weight:700;font-size:2.4vw;line-height:1.1}
+  .pillar .d{font-family:var(--sans-zh);font-weight:400;font-size:max(14px,1.1vw);opacity:.76;line-height:1.6}
+
+  .stat-card{display:flex;flex-direction:column;gap:.8vh;align-items:flex-start;padding-top:1.6vh;border-top:1px solid currentColor;border-color:rgba(127,127,127,.3)}
+  .stat-card .stat-label{font-family:var(--mono);font-size:max(10px,.78vw);letter-spacing:.24em;text-transform:uppercase;opacity:.55}
+  .stat-card .stat-nb{font-family:var(--serif-en);font-weight:800;font-size:5.8vw;line-height:.9;letter-spacing:-.03em;font-feature-settings:"tnum";margin-top:.4vh}
+
+  .hi{position:relative;display:inline}
+  .slide.dark .hi::after{content:"";position:absolute;left:-.1em;right:-.1em;bottom:-.05em;height:.28em;background:rgba(var(--paper-rgb),.15);z-index:-1}
+  .slide.light .hi::after{content:"";position:absolute;left:-.1em;right:-.1em;bottom:-.05em;height:.28em;background:rgba(var(--ink-rgb),.08);z-index:-1}
+
+  #nav{position:fixed;left:50%;bottom:2.6vh;transform:translateX(-50%);z-index:30;display:flex;gap:10px;padding:8px 14px;border-radius:999px;background:rgba(0,0,0,.18);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  #nav .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);cursor:pointer;transition:all .3s ease;border:0;padding:0}
+  #nav .dot:hover{background:rgba(255,255,255,.5);transform:scale(1.15)}
+  #nav .dot.active{background:rgba(255,255,255,.95);width:22px;border-radius:999px}
+  body.light-bg #nav{background:rgba(255,255,255,.25)}
+  body.light-bg #nav .dot{background:rgba(var(--ink-rgb),.25)}
+  body.light-bg #nav .dot.active{background:rgba(var(--ink-rgb),.9)}
+  #hint{position:fixed;bottom:3vh;right:3vw;z-index:30;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:.4;mix-blend-mode:difference;color:#aaa}
+
+  [data-anim]{opacity:0}
+  [data-anim].done{opacity:1}
+</style>
+</head>
+<body>
+
+<canvas class="bg" id="bg-dark"></canvas>
+<canvas class="bg" id="bg-light"></canvas>
+
+<div id="deck">
+
+<!-- S1: Cover (hero dark) -->
+<div class="slide hero dark center" data-idx="0">
+  <div class="chrome"><div class="left"><span>MULTI-TABLE ANALYSIS</span><span class="sep"></span><span>AUDIT REPORT</span></div><div class="right"><span>2026.06</span></div></div>
+  <div class="fill col center" style="justify-content:center">
+    <div class="kicker" data-anim="cascade">Store Performance Analysis</div>
+    <div class="display-zh" data-anim="cascade" style="animation-delay:.1s">门店经营<br>结构分析</div>
+    <div class="rule" style="width:40%;margin:3vh auto;animation-delay:.2s" data-anim="data-anim="cascade""></div>
+    <div class="lead" data-anim="cascade" style="animation-delay:.3s">4 门店 × 2 表关联 · 645K 营收全景</div>
+  </div>
+  <div class="foot"><span class="title">Business Analysis Learning Agent</span><span>01 / 08</span></div>
+</div>
+
+<!-- S2: Data Overview (light) -->
+<div class="slide light" data-idx="1">
+  <div class="chrome"><div class="left"><span>DATA OVERVIEW</span></div><div class="right"><span>02 / 08</span></div></div>
+  <div class="kicker" data-anim="cascade">Dataset Profile</div>
+  <div class="h2-zh" data-anim="cascade" style="animation-delay:.1s">数据全景：两表关联，四店经营</div>
+  <div class="rule" data-anim="cascade" style="animation-delay:.15s"></div>
+  <div class="grid-4" data-anim="cascade" style="animation-delay:.2s">
+    <div class="stat-card">
+      <div class="stat-label">Total Revenue</div>
+      <div class="stat-nb">645K</div>
+      <div class="body-zh" style="font-size:13px;opacity:.7">总营收（4 店合计）</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Cost</div>
+      <div class="stat-nb">467K</div>
+      <div class="body-zh" style="font-size:13px;opacity:.7">总成本 · 利润率 27.6%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Source Tables</div>
+      <div class="stat-nb" style="font-size:4vw">2</div>
+      <div class="body-zh" style="font-size:13px;opacity:.7">sales.csv + stores.csv</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Join Key</div>
+      <div class="stat-nb" style="font-size:4vw">1:1</div>
+      <div class="body-zh" style="font-size:13px;opacity:.7">store_id 一对一关联</div>
+    </div>
+  </div>
+  <div class="foot"><span class="title">Multi-Store Revenue Analysis</span><span>02 / 08</span></div>
+</div>
+
+<!-- S3: Revenue by Region (light) -->
+<div class="slide light" data-idx="2">
+  <div class="chrome"><div class="left"><span>SEGMENT ANALYSIS</span></div><div class="right"><span>03 / 08</span></div></div>
+  <div class="kicker" data-anim="cascade">Revenue by Region</div>
+  <div class="h2-zh" data-anim="cascade" style="animation-delay:.1s">区域差异：<span class="hi">2.3 倍</span>营收差距</div>
+  <div class="rule" data-anim="cascade" style="animation-delay:.15s"></div>
+  <div data-anim="cascade" style="animation-delay:.2s;flex:1;display:flex;flex-direction:column;gap:1.8vh">
+    <div class="rowline"><span class="k">West 西区</span><span class="v">唯一 Large 门店，营收和成本均最高</span><span class="m">220,000</span></div>
+    <div class="rowline"><span class="k">South 南区</span><span class="v">中型门店，营收居中，成本控制合理</span><span class="m">180,000</span></div>
+    <div class="rowline"><span class="k">East 东区</span><span class="v">Large 门店，但营收低于南区 Medium</span><span class="m">150,000</span></div>
+    <div class="rowline"><span class="k">North 北区</span><span class="v">唯一 Small 门店，营收最低，需关注</span><span class="m">95,000</span></div>
+  </div>
+  <div class="callout" data-anim="cascade" style="animation-delay:.4s;margin-top:2vh">
+    <span class="q-big">区域是营收的最强区分维度。Top（West）与 Bottom（North）差距达 2.3 倍，需结合门店规模和区域经济背景综合判断。</span>
+  </div>
+  <div class="foot"><span class="title">Multi-Store Revenue Analysis</span><span>03 / 08</span></div>
+</div>
+
+<!-- S4: Revenue by Size (dark) -->
+<div class="slide dark" data-idx="3">
+  <div class="chrome"><div class="left"><span>SEGMENT ANALYSIS</span></div><div class="right"><span>04 / 08</span></div></div>
+  <div class="kicker" data-anim="cascade">Revenue by Store Size</div>
+  <div class="h2-zh" data-anim="cascade" style="animation-delay:.1s">规模效应：Large 店贡献 <span class="hi">57%</span> 营收</div>
+  <div class="rule" data-anim="cascade" style="animation-delay:.15s"></div>
+  <div class="grid-3" data-anim="cascade" style="animation-delay:.2s">
+    <div class="stat-card">
+      <div class="stat-label">Large · 2 Stores</div>
+      <div class="stat-nb" style="font-size:6vw">370K</div>
+      <div class="body-zh" style="font-size:13px;opacity:.7">单店均值 185K · 占总量 57.4%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Medium · 1 Store</div>
+      <div class="stat-nb" style="font-size:6vw">180K</div>
+      <div class="body-zh" style="font-size:13px;opacity:.7">South 区 · 占总量 27.9%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Small · 1 Store</div>
+      <div class="stat-nb" style="font-size:6vw">95K</div>
+      <div class="body-zh" style="font-size:13px;opacity:.7">North 区 · 占总量 14.7%</div>
+    </div>
+  </div>
+  <div class="callout" data-anim="cascade" style="animation-delay:.3s;margin-top:2vh">
+    <span class="q-big">East 区 Large 门店（150K）营收反而不如 South 区 Medium 门店（180K）。说明门店规模不是唯一决定因素，区域市场潜力同样重要。</span>
+  </div>
+  <div class="foot"><span class="title">Multi-Store Revenue Analysis</span><span>04 / 08</span></div>
+</div>
+
+<!-- S5: Cost Efficiency (light) -->
+<div class="slide light" data-idx="4">
+  <div class="chrome"><div class="left"><span>EFFICIENCY ANALYSIS</span></div><div class="right"><span>05 / 08</span></div></div>
+  <div class="kicker" data-anim="cascade">Cost Efficiency</div>
+  <div class="h2-zh" data-anim="cascade" style="animation-delay:.1s">成本效率：利润率区间 <span class="hi">27%–30%</span></div>
+  <div class="rule" data-anim="cascade" style="animation-delay:.15s"></div>
+  <div data-anim="cascade" style="animation-delay:.2s;flex:1;display:flex;flex-direction:column;gap:1.8vh">
+    <div class="rowline"><span class="k">East 东区</span><span class="v">Large 门店，成本率最低，运营效率最优</span><span class="m">利润率 30.0%</span></div>
+    <div class="rowline"><span class="k">North 北区</span><span class="v">Small 门店，成本率偏高但仍在合理范围</span><span class="m">利润率 28.4%</span></div>
+    <div class="rowline"><span class="k">South 南区</span><span class="v">Medium 门店，成本率居中</span><span class="m">利润率 28.3%</span></div>
+    <div class="rowline"><span class="k">West 西区</span><span class="v">Large 门店，营收最高但成本率也最高</span><span class="m">利润率 25.0%</span></div>
+  </div>
+  <div class="callout" data-anim="cascade" style="animation-delay:.3s;margin-top:2vh">
+    <span class="q-big">West 区营收最高但利润率最低（25%），存在成本优化空间。East 区利润率最优（30%），可作为成本控制标杆。</span>
+  </div>
+  <div class="foot"><span class="title">Multi-Store Revenue Analysis</span><span>05 / 08</span></div>
+</div>
+
+<!-- S6: Multi-Table Intelligence (dark) -->
+<div class="slide dark" data-idx="5">
+  <div class="chrome"><div class="left"><span>TECHNICAL HIGHLIGHT</span></div><div class="right"><span>06 / 08</span></div></div>
+  <div class="kicker" data-anim="cascade">Multi-Table Intelligence</div>
+  <div class="h2-zh" data-anim="cascade" style="animation-delay:.1s">自动关联检测与合并</div>
+  <div class="rule" data-anim="cascade" style="animation-delay:.15s"></div>
+  <div class="split" data-anim="cascade" style="animation-delay:.2s">
+    <div class="col" style="gap:3vh">
+      <div class="pillar">
+        <div class="t">关系检测</div>
+        <div class="d">自动扫描两张表的候选键（store_id），计算重叠率 100%，识别为一对一关系。</div>
+      </div>
+      <div class="pillar">
+        <div class="t">Join 执行</div>
+        <div class="d">Left Join 合并 sales → stores，结果 4 行 5 列，无数据丢失。</div>
+      </div>
+      <div class="pillar">
+        <div class="t">字段语义推断</div>
+        <div class="d">revenue → Revenue / total sales、region → Geographic region、size → Store size / square footage。</div>
+      </div>
+    </div>
+    <div class="col" style="gap:2vh">
+      <div class="stat-card">
+        <div class="stat-label">Sales Table</div>
+        <div style="font-family:var(--mono);font-size:11px;opacity:.6">4 rows × 3 cols<br>store_id · revenue · cost</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Stores Table</div>
+        <div style="font-family:var(--mono);font-size:11px;opacity:.6">4 rows × 3 cols<br>store_id · region · size</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Join Result</div>
+        <div style="font-family:var(--mono);font-size:11px;opacity:.6">4 rows × 5 cols<br>100% key overlap · 1:1</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span class="title">Multi-Store Revenue Analysis</span><span>06 / 08</span></div>
+</div>
+
+<!-- S7: Key Findings (hero light) -->
+<div class="slide hero light" data-idx="6">
+  <div class="chrome"><div class="left"><span>KEY FINDINGS</span></div><div class="right"><span>07 / 08</span></div></div>
+  <div class="fill col" style="justify-content:center;gap:4vh">
+    <div class="kicker" data-anim="cascade">What the Data Tells Us</div>
+    <div class="h2-zh" data-anim="cascade" style="animation-delay:.1s">三个核心发现</div>
+    <div class="rule" style="width:30%;animation-delay:.15s" data-anim="data-anim="cascade""></div>
+    <div class="col" style="gap:3vh;animation-delay:.2s" data-anim="data-anim="cascade"">
+      <div class="callout"><span class="q-big">区域是最强区分维度。</span> West（220K）与 North（95K）营收差距 2.3 倍。区域市场潜力 + 门店规模双重影响。</div>
+      <div class="callout"><span class="q-big">规模不等于营收。</span> East 区 Large 门店（150K）营收低于 South 区 Medium 门店（180K）。单看规模会产生误判。</div>
+      <div class="callout"><span class="q-big">利润率差异小但可优化。</span> 四店利润率区间 25%–30%，West 区作为营收冠军，利润率却最低，存在 5pp 优化空间。</div>
+    </div>
+  </div>
+  <div class="foot"><span class="title">Multi-Store Revenue Analysis</span><span>07 / 08</span></div>
+</div>
+
+<!-- S8: Recommendations & Closing (hero dark) -->
+<div class="slide hero dark center" data-idx="7">
+  <div class="chrome"><div class="left"><span>RECOMMENDATIONS</span></div><div class="right"><span>08 / 08</span></div></div>
+  <div class="fill col center" style="justify-content:center">
+    <div class="kicker" data-anim="cascade">Action Plan</div>
+    <div class="h1-zh" data-anim="cascade" style="animation-delay:.1s">下一步行动</div>
+    <div class="rule" style="width:30%;margin:3vh auto;animation-delay:.15s" data-anim="data-anim="cascade""></div>
+    <div class="col" style="gap:2.4vh;max-width:60vw;margin:0 auto;text-align:left;animation-delay:.2s" data-anim="data-anim="cascade"">
+      <div class="rowline"><span class="k">01 深挖 West</span><span class="v">诊断成本结构，对标 East 区 30% 利润率</span><span class="m">优先</span></div>
+      <div class="rowline"><span class="k">02 研究 East</span><span class="v">Large 门店为何营收不如 South Medium？</span><span class="m">分析</span></div>
+      <div class="rowline"><span class="k">03 北区策略</span><span class="v">唯一 Small 门店，评估扩规模或区域策略</span><span class="m">评估</span></div>
+      <div class="rowline"><span class="k">04 持续监控</span><span class="v">建立月度区域×规模交叉分析机制</span><span class="m">机制</span></div>
+    </div>
+    <div class="sign" data-anim="cascade" style="animation-delay:.4s;margin-top:4vh">Business Analysis Learning Agent</div>
+  </div>
+  <div class="foot"><span class="title">Multi-Store Revenue Analysis</span><span>08 / 08</span></div>
+</div>
+
+</div><!-- /deck -->
+
+<div id="nav"></div>
+<div id="hint">← → or scroll</div>
+
+<script>
+/* ========== WebGL Background (minimal) ========== */
+(function(){
+  var dark=document.getElementById('bg-dark'), light=document.getElementById('bg-light');
+  var canvases=[dark,light];
+  canvases.forEach(function(c){
+    c.width=window.innerWidth;c.height=window.innerHeight;
+    var ctx=c.getContext('2d');
+    var isDark=c===dark;
+    var base=isDark?[10,10,11]:[241,239,234];
+    for(var i=0;i<60;i++){
+      var x=Math.random()*c.width,y=Math.random()*c.height;
+      var r=Math.random()*80+20;
+      var a=Math.random()*.04+.01;
+      ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle='rgba('+(isDark?'255,255,255':base.join(','))+','+a+')';
+      ctx.fill();
+    }
+  });
+})();
+
+/* ========== Navigation ========== */
+(function(){
+  var deck=document.getElementById('deck');
+  var slides=document.querySelectorAll('.slide');
+  var nav=document.getElementById('nav');
+  var N=slides.length;
+  var idx=0;
+
+  deck.style.width=(N*100)+'vw';
+
+  // Build dots
+  for(var i=0;i<N;i++){
+    var dot=document.createElement('button');
+    dot.className='dot'+(i===0?' active':'');
+    dot.onclick=(function(j){return function(){go(j)}})(i);
+    nav.appendChild(dot);
+  }
+
+  function go(i){
+    if(i<0||i>=N)return;
+    idx=i;
+    deck.style.transform='translateX('+(-idx*100)+'vw)';
+    document.querySelectorAll('#nav .dot').forEach(function(d,j){d.classList.toggle('active',j===idx)});
+    // Update light/dark body class
+    var s=slides[idx];
+    document.body.classList.toggle('light-bg',s.classList.contains('light'));
+    document.body.classList.toggle('dark-bg',s.classList.contains('dark'));
+    // Trigger animations
+    var anims=s.querySelectorAll('[data-anim]');
+    anims.forEach(function(el){el.classList.add('done')});
+  }
+
+  // Init
+  go(0);
+
+  // Keyboard
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key==='ArrowDown')go(idx+1);
+    if(e.key==='ArrowLeft'||e.key==='ArrowUp')go(idx-1);
+  });
+
+  // Wheel
+  var wheelTimer=0;
+  document.addEventListener('wheel',function(e){
+    var now=Date.now();
+    if(now-wheelTimer<800)return;
+    wheelTimer=now;
+    if(e.deltaY>0)go(idx+1);
+    else go(idx-1);
+  },{passive:true});
+
+  // Touch
+  var touchY=0;
+  document.addEventListener('touchstart',function(e){touchY=e.touches[0].clientY});
+  document.addEventListener('touchend',function(e){
+    var dy=e.changedTouches[0].clientY-touchY;
+    if(Math.abs(dy)>50){if(dy<0)go(idx+1);else go(idx-1)}
+  });
+})();
+</script>
+</body>
+</html>
