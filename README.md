@@ -1,125 +1,185 @@
 # Business Analysis Learning Agent Skill
 
-> A learning-oriented AI Agent Skill that turns business datasets into beginner-friendly Excel, PDF, and presentation-ready insights.
->
-> 面向商业初学者的 AI 数据分析 Skill：自动生成 Excel、PDF、审计日志，并解释指标逻辑与商业洞察。
+> 把一份真实数据集，变成一次可以完成、可以理解、也可以反复回看的商业分析练习。
 
-A platform-agnostic Agent Skill for learning-oriented business data analysis. This skill helps an AI agent teach business beginners how to think about data — not just produce charts and summaries.
+很多商科生和数据分析初学者并不是没有数据，也不是没有 AI。
 
-## Why This Project
+真正困难的是：当 AI 很快给出图表和结论之后，你依然不知道它为什么这样分析，不知道指标是怎么算出来的，也不知道下一次换一份数据后，自己还能不能再做一遍。
 
-Business beginners often face a gap: they have data (CSV exports, Excel reports, CRM dumps) but don't know how to go from raw numbers to actionable insights. Existing tools either require advanced skills (Python, SQL, statistics) or produce black-box results without explanation.
+这个 Skill 想解决的，就是这段从“看见答案”到“真正学会”的距离。
 
-This project bridges that gap:
+## 核心理念：以练代学
 
-- **For learners**: the Agent explains what each metric means, why a method was chosen, what the results CANNOT prove, and how to reuse the thinking next time — in beginner-friendly Chinese.
-- **For portfolio builders**: every run produces professional Excel + PDF + audit log deliverables that demonstrate analysis capability.
-- **For educators**: the 3-tier method layering (basic → advanced → expert) and structured teaching output rules provide a complete "learn by doing" (做中学) data analysis curriculum.
+它不是一份只让你阅读的教程，而是一套让你在真实任务中学习商业分析的工作流。
 
-> **Teaching Layer (v0.10):** This Skill upgrades analysis output from "Finding → Suggestion" to "Finding → Method Explanation → Metric Explanation → Business Interpretation → Risk Boundary → Learning Transfer." See `docs/methodology/teaching_output_rules.md`.
+你提供一份 CSV、Excel 或多表业务数据，Agent 会陪你完成一次完整分析，同时解释每一步背后的思考：
 
-## What It Is
-
-This skill combines a **Python/pandas automated analysis pipeline** with **agent-driven analysis reasoning**:
-
-- Read CSV/Excel data
-- Profile the dataset (row count, columns, missing values, duplicates)
-- Infer field business meanings from naming patterns (130+ patterns)
-- Match computable business metrics from a predefined registry (14 metrics)
-- Execute basic descriptive analysis (grouped ranking, trend, distribution)
-- Check data quality risks
-- Generate Excel / PDF / audit log deliverables
-- Optionally produce HTML presentation decks via agent workflow
-- Explain analysis logic, metric definitions, and business insights in Chinese
-
-### What It Is Not
-
-- Not a machine learning platform — the Python pipeline does not contain ML models
-- Not an automated modeling tool — the pipeline does not use scikit-learn, statsmodels, or Prophet
-- Not a replacement for SPSS, Stata, or SAS
-- Not an "auto data scientist" — the analysis logic is rule-driven and fully auditable
-
-> **Note:** The Agent (LLM) may execute Tier 2 advanced methods (correlation, RFM, etc.) using available tools when data conditions are met and the user confirms. These are agent-driven, not pipeline-driven. See `SKILL.md` Section 5 for the 3-tier method layering.
-
-## How It Works
-
-```
-CSV/Excel → Data Intake → Field Semantics → Metric Registry → Analysis Planner → HTML/PDF/Excel/Audit
+```text
+拿到真实数据
+    ↓
+理解字段和业务问题
+    ↓
+选择分析方法并计算指标
+    ↓
+解释数据发现、商业含义和风险边界
+    ↓
+生成可以回顾的训练产物
+    ↓
+把这套思路用到下一份数据
 ```
 
-The analysis follows a fully deterministic, rule-driven pipeline:
+每一次使用，既是在完成一个分析任务，也是在完成一次商业分析训练。
 
-1. **Data Intake** — `load_dataset()` / `load_folder()`, pandas reads CSV/Excel into DataFrame
-2. **Data Profiling** — row count, columns, missing values, duplicates
-3. **Field Semantics** — regex match 130+ naming patterns, map field names to business meanings
-4. **Metric Matching** — match fields against 14 metric registry entries, compute CTR/CPC/margin if fields exist
-5. **Quality Check** — negative values, zero rates, missing rates
-6. **Ranking Analysis** — `groupby().agg(["sum","mean","count"])`, top/bottom segments
-7. **Trend Analysis** — `dt.to_period("M")` → groupby + sum, month-over-month changes
-8. **Distribution** — `describe()`, mean, median, std, quartiles
-9. **Thinking Models** — 5 fixed templates with parameterized evidence
-10. **Report Schema** — unified dict consumed by all renderers
-11. **Render** — Excel (.xlsx), designed HTML report (.html), and PDF (.pdf)
-12. **Audit Log** — JSON recording what ran, matched, skipped, and why
+## 为什么要开发这个 Skill
 
-Each step maps to a specific module in `scripts/core/` or `scripts/renderers/`. See `docs/methodology/` for detailed documentation.
+商业初学者常常会卡在这些地方：
 
-### PDF Rendering
+- 会打开 Excel，却不知道面对一张表应该先看什么
+- 听过 GMV、AOV、留存率、转化率，却不知道它们与哪些字段有关
+- 能让 AI 生成结果，却无法判断结论是否可靠
+- 看懂了这次报告，但换一份数据后仍然不知道如何开始
+- 做完分析后没有留下适合复盘、展示或放进作品集的完整产物
 
-PDF output is generated from a designed HTML/CSS business report first, then exported with WeasyPrint or Playwright's browser PDF engine. The older ReportLab renderer is kept as the final fallback if HTML-to-PDF export is unavailable. This keeps the report readable, avoids forced page breaks after every section, and makes layout tuning possible in the generated `*_report.html` file.
+因此，这个 Skill 不只输出“发现了什么”，还会继续解释：
 
-## Demo Outputs
+- 为什么选择这个分析方法
+- 指标由哪些字段计算得出
+- 结果在商业场景中意味着什么
+- 这个结果不能证明什么
+- 下次遇到类似数据时，应该如何复用这套思路
 
-The `sample_outputs/final_demo/` directory contains complete example outputs you can browse without running the tool:
+> 分析输出会从“发现问题 → 给出建议”，升级为“分析发现 → 方法解释 → 指标解释 → 商业含义 → 风险边界 → 学习迁移”。完整教学规则见 `docs/methodology/teaching_output_rules.md`。
 
-| Demo | Contents | Description |
-|------|----------|-------------|
-| `final_demo/retail_demo/` | Excel + PDF + audit log | Retail sales analysis (12 records, 3 regions, 3 categories) |
-| `final_demo/` (root) | Excel + PDF + PPTX | SaaS subscription churn analysis (multi-table merge) |
+## 每次练习都会留下什么
 
-Each demo includes:
-- `*_analysis.xlsx` — data tables, charts, and KPI dashboard
-- `*_report.html` — designed teaching report for visual review and layout tuning
-- `*_report.pdf` — PDF exported from the HTML report, with ReportLab fallback if needed
-- `*_audit_log.json` — full audit trail of executed/skipped/recommended methods
+学习不应该只停留在一次对话里。每次分析结束后，Skill 会生成一组可以保存、复盘和展示的训练产物：
 
-See `sample_outputs/README.md` for details.
+| 训练产物 | 你可以用它做什么 |
+| --- | --- |
+| `*_analysis.xlsx` | 回看数据表、图表、KPI 仪表板和分析过程 |
+| `*_report.html` | 在浏览器中阅读结构化的教学报告 |
+| `*_report.pdf` | 像复习讲义一样回顾指标、发现、商业概念和思维模型 |
+| `*_audit_log.json` | 检查执行了什么、跳过了什么，以及为什么 |
+| HTML 演示文稿 | 用于汇报、分享或作品集展示 |
 
-## Project Structure
+这些文件不是分析结束后的“附件”，而是学习过程的一部分。你可以在下一次练习前重新打开 PDF，回顾自己学过的指标、方法和判断边界。
 
+## 它适合谁
+
+- 正在学习商业分析、市场营销、运营、管理或财务分析的商科生
+- 刚开始接触数据分析，不擅长 Python、SQL 或统计学的初学者
+- 希望 AI 不只给答案，还能解释分析逻辑的用户
+- 想通过真实项目积累商业分析作品集的人
+- 希望用“做中学”方式训练分析思维的人
+
+## 这个 Skill 能做什么
+
+本 Skill 将 **Python 与 pandas 自动分析管线** 和 **Agent 主导的分析推理** 结合起来：
+
+- 读取 CSV 和 Excel 数据
+- 检查数据规模、字段、缺失值和重复值
+- 根据字段命名模式推断字段的商业含义
+- 从预设指标库中匹配当前数据可以计算的商业指标
+- 执行分组排名、趋势、分布等基础描述性分析
+- 检查常见的数据质量风险
+- 生成 Excel、HTML、PDF 和 JSON 审计日志
+- 通过 Agent 工作流生成 HTML 演示文稿
+- 使用中文解释分析逻辑、指标定义和商业洞察
+
+### 这个 Skill 不是什么
+
+- 不是机器学习平台，Python 管线中不包含机器学习模型
+- 不是自动建模工具，主管线不使用 `scikit-learn`、`statsmodels` 或 `Prophet`
+- 不能替代 SPSS、Stata 或 SAS
+- 不是“自动数据科学家”，所有分析逻辑均由规则驱动，并且可以审计
+
+> 当数据条件满足且用户确认后，Agent 可以使用可用工具执行相关性分析、RFM 等进阶方法。这些方法由 Agent 主导，不属于 Python 主管线的自动执行范围。三级方法体系见 `SKILL.md`。
+
+## 工作流程
+
+```text
+CSV/Excel → 数据读取 → 字段语义识别 → 指标匹配 → 分析规划 → HTML/PDF/Excel/审计日志
 ```
+
+整个分析过程遵循稳定、可检查的规则驱动管线：
+
+1. **数据读取**：使用 `load_dataset()` 或 `load_folder()`，通过 pandas 读取 CSV 或 Excel
+2. **数据体检**：检查记录数、字段数、缺失值和重复值
+3. **字段语义识别**：使用命名模式将字段名映射为可能的商业含义
+4. **指标匹配**：根据指标库匹配可计算指标，并在字段满足时计算 CTR、CPC、利润率等指标
+5. **质量检查**：检查负数、零值比例和缺失比例等风险
+6. **排名分析**：使用分组聚合识别表现最好和最差的业务分组
+7. **趋势分析**：按月汇总数据并计算环比变化
+8. **分布分析**：计算均值、中位数、标准差和四分位数
+9. **思维模型**：根据分析结果生成可复用的商业分析思维模型
+10. **统一结果结构**：将分析结果写入所有输出渲染器共同使用的数据结构
+11. **输出渲染**：生成 Excel、设计型 HTML 报告和 PDF 报告
+12. **审计日志**：记录执行了什么、匹配了什么、跳过了什么，以及跳过原因
+
+每一步都对应 `scripts/core/` 或 `scripts/renderers/` 中的具体模块。详细方法说明见 `docs/methodology/`。
+
+### PDF 生成方式
+
+PDF 会先以 HTML/CSS 商业报告的形式生成，再使用 WeasyPrint 或 Playwright 的浏览器 PDF 引擎导出。
+
+当 HTML 转 PDF 不可用时，系统会使用旧版 ReportLab 渲染器作为最终备用方案。这个设计可以提升报告可读性，减少每个章节强制单独分页造成的大量空白，并允许用户通过生成的 `*_report.html` 文件检查和调整排版。
+
+## 示例输出
+
+`sample_outputs/final_demo/` 目录中提供了无需运行工具即可浏览的完整示例：
+
+| 示例 | 包含内容 | 说明 |
+| --- | --- | --- |
+| `final_demo/retail_demo/` | Excel、PDF、审计日志 | 零售销售分析示例 |
+| `final_demo/multi_table_demo/` | Excel、PDF、审计日志、HTML 演示文稿 | 多表关联分析示例 |
+
+示例文件通常包括：
+
+- `*_analysis.xlsx`：数据表、图表和 KPI 仪表板
+- `*_report.html`：用于浏览器阅读和 PDF 排版检查的教学型报告
+- `*_report.pdf`：从 HTML 报告导出的 PDF
+- `*_audit_log.json`：已执行、已跳过和建议执行方法的完整审计记录
+
+更多说明见 `sample_outputs/README.md`。
+
+## 项目结构
+
+```text
 ├── README.md
 ├── QUICKSTART.md
-├── SKILL.md                         platform-agnostic agent instructions
-├── AGENT_INSTRUCTIONS.md            standalone instructions for non-Claude agents
+├── SKILL.md                         跨平台 Agent 行为说明
+├── AGENT_INSTRUCTIONS.md            非 Claude Agent 的独立指令文件
 ├── requirements.txt
 ├── scripts/
-│   ├── run_analysis.py              universal entry point (CLI)
-│   ├── core/                        analysis runtime core (data intake, semantics, metrics, planner)
-│   ├── renderers/                   output renderers (Excel, HTML/CSS→PDF)
-│   ├── legacy/                      historical validation scripts (v0.1–v0.5; not part of main pipeline)
+│   ├── run_analysis.py              通用命令行入口
+│   ├── core/                        数据读取、字段语义、指标和分析规划
+│   ├── renderers/                   Excel、HTML 和 PDF 输出渲染器
+│   ├── legacy/                      历史验证脚本，不属于当前主管线
 │   └── README.md
-├── templates/                       agent reading: teaching & report templates
-├── examples/                        agent/user reference examples
-├── test_cases/                      sample datasets for testing
+├── templates/                       教学与报告模板
+├── examples/                        Agent 和用户参考示例
+├── test_cases/                      测试数据集
 ├── docs/
-│   ├── methodology/                 detailed methodology documentation
-│   ├── archive/                     archived docs and historical outputs
-│
-├── sample_outputs/                  GitHub showcase samples (not runtime)
-├── vendor/agent_presentation_skills/  built-in presentation design dependencies (Guizang A/B, Design DNA)
-├── .claude/                         optional Claude Code adapter
+│   ├── methodology/                 方法论详细文档
+│   └── archive/                     历史文档和历史输出
+├── sample_outputs/                  GitHub 展示示例，不属于运行时输出
+├── vendor/agent_presentation_skills/  内置演示文稿设计依赖
+├── .claude/                         可选的 Claude Code 适配器
 └── LICENSE
 ```
 
-## Quick Start
+## 快速开始
 
-### Prerequisites
+### 环境要求
 
-- Python 3.9+
-- `pip install -r requirements.txt`
+- Python 3.9 或更高版本
+- 安装依赖：
 
-### Run on a Single CSV
+```bash
+pip install -r requirements.txt
+```
+
+### 分析单个 CSV 文件
 
 ```bash
 python3 scripts/run_analysis.py \
@@ -128,7 +188,7 @@ python3 scripts/run_analysis.py \
   --output-dir ~/Desktop/my_analysis
 ```
 
-### Run on a Folder of Multiple CSVs
+### 分析包含多个 CSV 的文件夹
 
 ```bash
 python3 scripts/run_analysis.py \
@@ -137,7 +197,7 @@ python3 scripts/run_analysis.py \
   --output-dir ~/Desktop/multi_table_analysis
 ```
 
-### Smoke Test (verify everything works)
+### 运行基础验证
 
 ```bash
 python3 scripts/run_analysis.py \
@@ -146,101 +206,92 @@ python3 scripts/run_analysis.py \
   --output-dir /tmp/balearn_smoke_test
 ```
 
-Output files per run:
+每次运行会生成以下文件：
 
-| File | Description |
-|------|-------------|
-| `*_analysis.xlsx` | Excel workbook with tables, charts, and dashboard |
-| `*_report.html` | Designed HTML teaching report for browser review and PDF layout |
-| `*_report.pdf` | PDF report exported from the HTML/CSS report |
-| `*_audit_log.json` | JSON audit log of executed/skipped/recommended methods |
+| 文件 | 说明 |
+| --- | --- |
+| `*_analysis.xlsx` | 包含数据表、图表和仪表板的 Excel 工作簿 |
+| `*_report.html` | 用于浏览器阅读和 PDF 排版检查的 HTML 教学报告 |
+| `*_report.pdf` | 从 HTML/CSS 报告导出的 PDF |
+| `*_audit_log.json` | 记录已执行、已跳过和建议方法的 JSON 审计日志 |
 
-### Available Modes
+### 可用输出模式
 
-| Mode | Use Case |
-|------|----------|
-| `beginner_summary` | First-time users, short friendly output |
-| `standard_report` | Balance of explanation and readability |
-| `audit_report` | Full detailed output for portfolio or review |
+| 模式 | 适用场景 |
+| --- | --- |
+| `beginner_summary` | 初次使用，输出简短且易于理解 |
+| `standard_report` | 平衡解释深度和阅读效率 |
+| `audit_report` | 用于作品集、验收或完整审查 |
 
-### Language
+### 输出语言
 
-User-facing outputs default to **Chinese**. English or bilingual output is available through the agent workflow (not yet implemented as a CLI flag — see `SKILL.md` for agent-driven language switching).
+所有面向用户的输出默认使用中文。用户也可以通过 Agent 工作流要求英文或中英双语输出。
 
-## Agent Compatibility
+## Agent 兼容性
 
-This project is designed as a **platform-agnostic Agent Skill**:
+本项目被设计为跨平台 Agent Skill，可用于：
 
-- Claude Code (via `.claude/` adapter)
-- Claude desktop/web (with file analysis)
-- ChatGPT (with data analysis tools)
-- Gemini or other agents that support instruction files
+- Claude Code，通过 `.claude/` 适配器使用
+- Claude 桌面版或网页版
+- ChatGPT 数据分析工具
+- Gemini 或其他支持读取指令文件的 Agent
 
-**Claude Code users** can run `/balearn` after opening this repository.
+Claude Code 用户在打开本仓库后，可以运行 `/balearn`。
 
-**Other agents** should use `AGENT_INSTRUCTIONS.md` as the starting prompt.
+其他 Agent 可以使用 `AGENT_INSTRUCTIONS.md` 作为起始指令。
 
-## Presentation Generation
+## 演示文稿生成
 
-The recommended way to get a presentation is through the **interactive agent workflow** (SKILL.md Step 9):
+推荐通过交互式 Agent 工作流生成演示文稿，具体规则见 `SKILL.md` 的演示文稿步骤：
 
-1. Analysis completes → user gets Excel + PDF
-2. Agent asks whether to generate a presentation
-3. If yes → choose from 2 styles:
-   - **Guizang A (Editorial Magazine)** — two-page flipping HTML, WebGL backgrounds
-   - **Guizang B (Swiss Typographic)** — minimal grid, strong hierarchy
-4. Agent generates a standalone HTML deck
+1. 首先完成分析，并生成 Excel、HTML、PDF 和审计日志
+2. Agent 询问用户是否需要演示文稿
+3. 如果需要，用户从两种风格中选择：
+   - **Guizang A，电子杂志风**：适合叙事表达，支持翻页式 HTML 和 WebGL 背景
+   - **Guizang B，瑞士国际主义风**：强调网格、层级和结构化信息
+4. Agent 生成独立的 HTML 演示文稿
 
-Presentation templates are bundled in `vendor/agent_presentation_skills/`.
+演示文稿模板位于 `vendor/agent_presentation_skills/`。
 
-Presentations are **Agent-only deliverables**. The universal CLI does not generate PPTX files or provide a `--ppt` shortcut. This guarantees that every presentation is created after the Agent reads the selected bundled presentation Skill and follows its design and QA rules.
+演示文稿属于 **仅由 Agent 生成的产物**。通用命令行工具不会直接生成 PPTX，也不提供 `--ppt` 快捷参数。这样可以确保每一份演示文稿都由 Agent 在阅读所选演示文稿 Skill 后生成，并遵循其设计规范和验收清单。
 
-## Use Cases
+## 适用场景
 
-- Marketing campaign analysis
-- Retail sales analysis
-- Customer churn analysis
-- Product performance analysis
-- Financial metrics analysis
-- Multi-table business data integration
+- 营销活动分析
+- 零售销售分析
+- 客户流失分析
+- 产品表现分析
+- 财务指标分析
+- 多表商业数据整合
 
-## Who It Is For
+## 设计原则
 
-- Business students learning data analysis
-- Management, marketing, and operations beginners
-- Users who need business interpretation, not just charts or code
-- Anyone building a portfolio of business analysis work
+- 分析过程也是学习过程，先解释为什么，再说明怎么做
+- 将数据字段连接到真实商业问题
+- 区分数据证据、商业解释和假设
+- 始终考虑初学者的理解成本
+- 输出具有专业质量的 Excel、HTML 和 PDF
 
-## Design Principles
+## 项目亮点
 
-- Analysis is also learning — explain why before how
-- Connect data fields to business questions
-- Separate evidence, interpretation, and assumptions
-- Keep beginner users in mind
-- Deliver professional-quality Excel and PDF outputs
+- **跨平台 Agent Skill**：适用于 Claude Code、ChatGPT、Gemini 或其他能够读取指令文件的 Agent
+- **面向初学者的商业语言**：使用易于理解的中文解释指标、方法和发现
+- **完整可审计管线**：每一步都记录在 JSON 审计日志中
+- **多表关联能力**：识别关联字段、判断表关系，并谨慎合并相关数据集
+- **专业输出产物**：生成带 KPI 仪表板的 Excel、设计型 HTML 报告、PDF 和 JSON 审计日志
+- **三级学习路径**：从基础描述性分析逐步延伸到进阶方法，并根据数据条件决定是否执行
 
-## Highlights
+## 当前限制
 
-- **Platform-agnostic Agent Skill** — works with Claude Code, ChatGPT, Gemini, or any agent that reads instruction files
-- **Beginner-friendly business language** — metrics, methods, and findings are explained in plain Chinese (English on request)
-- **Fully auditable pipeline** — every step is recorded in a JSON audit log: what ran, what was skipped, and why
-- **Multi-table intelligence** — detects join keys, classifies relationships, and safely merges related datasets
-- **Professional deliverables** — Excel (.xlsx) with KPI dashboard, designed HTML report, PDF (.pdf) export, JSON audit log, and optional PPTX/HTML presentation deck
-- **3-tier learning path** — built-in method layering from basic descriptive stats through advanced analysis, all conditional on data readiness
+- **不是机器学习平台**：Python 管线由规则驱动，不包含机器学习模型
+- **不是因果推断工具**：可以识别模式和关联，但不能直接证明因果关系
+- **统计分析深度有限**：回归、时间序列预测和聚类等进阶方法需要 Agent 参与并获得用户确认
+- **当前仅支持 CSV 和 Excel**：不能直接连接数据库、API 或云存储
+- **以内存方式处理数据**：超大数据集可能耗尽可用内存
+- **字段语义依赖命名模式**：非标准字段名可能无法被准确识别
 
-## Limitations
+## 许可证
 
-- **Not an ML platform** — the Python pipeline is rule-driven and does not contain machine learning models
-- **Not a causal inference tool** — identifies patterns and associations, not causation
-- **Limited statistical depth** — advanced methods (regression, time-series forecasting, clustering) require agent involvement and user confirmation
-- **CSV/Excel only** — does not connect to databases, APIs, or cloud storage
-- **In-memory processing** — very large datasets (>1M rows) may exhaust available RAM
-- **Field semantics via naming patterns** — non-English or non-standard field names may not be recognized
+主项目使用 MIT 许可证，详见 `LICENSE`。
 
-## License
-
-The main project is licensed under MIT. See `LICENSE`.
-
-Bundled presentation Agent Skills retain their original licenses, including
-the GNU AGPL-3.0 licensed `guizang-ppt-skill`. See
-`THIRD_PARTY_NOTICES.md` for details.
+内置的第三方演示文稿 Agent Skill 保留其原始许可证，其中 `guizang-ppt-skill` 使用 GNU AGPL-3.0 许可证。详细说明见 `THIRD_PARTY_NOTICES.md`。
